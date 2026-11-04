@@ -238,5 +238,5 @@ Conventions that span more than one repo (decided 2026-10-16).
 
 - **Scanner API contract is frozen.** The device-facing routes `POST /api/scan` (JSON `{"rfid"}`) and `POST /api/rfid/scan` (form `rfid=`), with their paths, encodings, UID format (uppercase hex bytes joined by `:`) and response bodies, never change unless the firmware (`rfid`) and the backend (`be`) change in the same ticket.
 - **Realtime contract.** be and fe share public channel `rfid`, event `AssignRfid`, payload `message` = UID. Change both sides in the same ticket.
-- **Branches.** Feature branches start from `dev` and are named by the lowercase ticket key (e.g. `mis-123`).
+- **Branches.** Feature branches start from `develop` and are named by the lowercase ticket key (e.g. `mis-123`).
 - **Secrets are never committed.** Each repo reads them from a gitignored file, `.env` (be, fe, mobile) or `mis/arduino_secrets.h` (rfid), and commits only the template (`.env.example`, `arduino_secrets.h.example`). Client-bundled vars (`VITE_*`, `EXPO_PUBLIC_*`) are public and never hold secrets.
