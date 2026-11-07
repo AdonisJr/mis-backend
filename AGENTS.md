@@ -4,7 +4,7 @@
 
 ## Purpose
 
-Laravel 12 API for the MIS project. It receives RFID card scans from the Arduino scanner firmware (`arduino-rfid-scanner`), records attendance, relays card UIDs to the admin UI for card→student assignment, and serves the admin SPA (`mis-frontend`) and the student/parent app (`mis-mobile`). The RFID flow is rebuilt identically to `enrollment/mis-be`. Generator output (`laravel/laravel` + `php artisan install:api`); staff auth and school years implemented.
+Laravel 12 API for the MIS project. It receives RFID card scans from the Arduino scanner firmware (`arduino-rfid-scanner`), records attendance, relays card UIDs to the admin UI for card→student assignment, and serves the admin SPA (`mis-frontend`) and the student/parent app (`mis-mobile`). The RFID flow is rebuilt identically to `enrollment/mis-be`. Generator output (`laravel/laravel` + `php artisan install:api`); staff auth, school years and students implemented.
 
 ## Ownership
 
@@ -32,9 +32,11 @@ Owner: a.baladon@qstrike.com. Part of the `mis` project — shared plans, rules 
   - `DELETE /api/mis/school-years/{id}` (admin) → 204; 422 `{"message":"The active school year cannot be deleted."}` for the active row; 404.
   - `PUT /api/mis/school-years/set-active/{id}` (admin) → 200 `{school_year}` (`is_active` true, all others false, in one transaction); 404 changes nothing.
   - `GET /api/mis/school-years/get-active` (admin, registrar) → 200 `{school_year}` or `{"school_year": null}`.
+- Entity `students` (mis-4, `Student`): `lrn` string(12) unique (exactly 12 digits, validated); required `first_name`, `last_name`, `birth_date` (date, before today), `gender` (`Student::GENDERS`), `grade_level` (`Student::GRADE_LEVELS`, Grade 7 to 4th Year College), `section` (course for college), `guardian_name`, `guardian_relationship`, `guardian_contact` (max 20); nullable `middle_name`, `address`, `contact` (max 20); `rfid` nullable unique and `user_id` nullable unique FK to `users` (null on delete) are not fillable and never written by the student endpoints.
+- Student endpoints (mis-4, `StudentController`, staff group: admin and registrar): `student` = `StudentResource` (17 keys, `birth_date` `Y-m-d`, `rfid` string or null, no `user_id`). `GET /api/mis/students?search=&grade_level=&section=&page=` → 200 `{students: [student], meta: {current_page, last_page, per_page, total}}`, 15 per page, `created_at` desc then `id` desc, search = every whitespace-split word in lrn/first/middle/last name (case-insensitive), no `per_page` param. `POST /api/mis/students` → 201 `{student}`; `PUT /api/mis/students/{id}` → 200 `{student}` (LRN unique ignores own row); `DELETE /api/mis/students/{id}` → 204. 422 `{message, errors}`; 404 `{message}`; `rfid`/`user_id` in a body are ignored. Status precedence 401 → 403 → 422 → 404.
 - Roles: `roles` + `role_user` pivot (many-to-many); names are `Role::ADMIN` / `Role::REGISTRAR` constants (`Role::STAFF_ROLES`). `User::hasAnyRole()` is the role check.
 - Middleware: `role:` alias → `RoleMiddleware` (any-match, 403 `{message}`); `ForceJsonResponse` prepended to the api group in `bootstrap/app.php` (built in mis-1).
-- Errors are always JSON; validation via FormRequest or `$request->validate()`; list endpoints `paginate()`, except `GET /api/mis/school-years` (all rows, decided mis-3 AMBIGUITY-5).
+- Errors are always JSON; validation via FormRequest or `$request->validate()`; list endpoints `paginate()`, except `GET /api/mis/school-years` (all rows, decided mis-3 AMBIGUITY-5); the students list pages 15 per page under a `meta` key (mis-4).
 
 ## Work Guidance
 
