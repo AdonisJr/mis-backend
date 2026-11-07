@@ -10,9 +10,10 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class SchoolYearFactory extends Factory
 {
-    private const FIRST_START_YEAR = 2000;
+    // Kept above the fixed names tests use (e.g. "2026-2027") so the unique name never collides.
+    private const FIRST_START_YEAR = 2100;
 
-    private const LAST_START_YEAR = 2099;
+    private const LAST_START_YEAR = 2999;
 
     private const START_MONTH_DAY = '-08-01';
 
