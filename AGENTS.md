@@ -4,7 +4,7 @@
 
 ## Purpose
 
-Laravel 12 API for the MIS project. It receives RFID card scans from the Arduino scanner firmware (`arduino-rfid-scanner`), records attendance, relays card UIDs to the admin UI for card→student assignment, and serves the admin SPA (`mis-frontend`) and the student/parent app (`mis-mobile`). The RFID flow is rebuilt identically to `enrollment/mis-be`. Generator output (`laravel/laravel` + `php artisan install:api`); staff auth implemented; no other domain code yet.
+Laravel 12 API for the MIS project. It receives RFID card scans from the Arduino scanner firmware (`arduino-rfid-scanner`), records attendance, relays card UIDs to the admin UI for card→student assignment, and serves the admin SPA (`mis-frontend`) and the student/parent app (`mis-mobile`). The RFID flow is rebuilt identically to `enrollment/mis-be`. Generator output (`laravel/laravel` + `php artisan install:api`); staff auth and school years implemented.
 
 ## Ownership
 
@@ -17,16 +17,24 @@ Owner: a.baladon@qstrike.com. Part of the `mis` project — shared plans, rules 
 - Coding rules: `.claude/rules/rules-common.md`, `.claude/rules/rules-backend.md`. Both are binding.
 - Implementation agent: `be-developer`. Auditor: `be-auditor`.
 - Plans for this repo: `.claude/common/plans/active/<slug>/plan-be.md`
-- Route groups: device routes at the `/api` root, public. Every admin route under `Route::prefix('mis')` → `/api/mis/...`, behind `auth:sanctum` + admin/registrar role middleware. Auth done (mis-1): `POST /api/mis/login` public; everything else in `/api/mis` behind `auth:sanctum` + `role:admin,registrar`.
+- Route groups: device routes at the `/api` root, public. Every admin route under `Route::prefix('mis')` → `/api/mis/...`, behind `auth:sanctum` + admin/registrar role middleware. Auth done (mis-1): `POST /api/mis/login` public; everything else in `/api/mis` behind `auth:sanctum` + `role:admin,registrar` (staff group), plus a `role:admin` group for admin-only routes.
 - Scanner contract (frozen; identical to `enrollment/mis-be`, matches the firmware — change only together with a firmware change):
   - `POST /api/scan` — JSON `{"rfid"}` — attendance. Student by `rfid` (404 `{message}` if none); first scan of the day creates `student_attendances` `time_in` + `status=present`, later scans set `time_out`; uses the **active school year**. 200 `{student, attendance}`.
   - `POST /api/rfid/scan` — form `rfid=` — assignment relay. 403 `{status, message}` unless cache `rfid_channel_opened` is set (by `/api/mis/rfid/open`, 300 s); else broadcasts `AssignRfid` (`message` = UID) on public channel `rfid`.
   - UID = uppercase hex bytes joined by `:` (4, 7 or 10 bytes). Firmware sends no Accept header → the api group forces `Accept: application/json`.
   - `students.rfid`: string, nullable, unique.
 - Staff auth endpoints (mis-1, `AuthController`): `POST /api/mis/login` JSON `{email, password}` → 200 `{token, user}` or 422 `{message, errors}`; `GET /api/mis/user` → 200 `{user}`; `POST /api/mis/logout` → 204, revokes only the current token. `user` = `UserResource` `{id, name, email, roles: string[]}`. No valid token → 401 `{"message":"Unauthenticated."}`; no staff role → 403 `{"message":"Unauthorized"}`.
+- Entity `school_years` (mis-3, `SchoolYear`): `name` string unique, `start_date` / `end_date` date, `description` text nullable, `is_active` boolean default false (not fillable; changed only by set-active, at most one active row).
+- School-year endpoints (mis-3, `SchoolYearController`): `school_year` = `SchoolYearResource` `{id, name, start_date, end_date, description, is_active, created_at, updated_at}` (8 keys, dates `Y-m-d`, timestamps ISO-8601). Status precedence 401 → 403 → 422 → 404; ids numeric (`whereNumber`), else route 404.
+  - `GET /api/mis/school-years` (admin) → 200 `{school_years: [school_year]}`, all rows, `start_date` desc then `id` desc.
+  - `POST /api/mis/school-years` (admin) JSON `{name, start_date, end_date, description?}` → 201 `{school_year}` (`is_active` false) or 422 `{message, errors}`. Rules: name required, max 255, unique; dates `date_format:Y-m-d`, `end_date` after `start_date`; description nullable, max 1000. `is_active` in the body is ignored.
+  - `PUT /api/mis/school-years/{id}` (admin) same body (unique ignores own row) → 200 `{school_year}`, `is_active` unchanged; 422; 404 `{message}`.
+  - `DELETE /api/mis/school-years/{id}` (admin) → 204; 422 `{"message":"The active school year cannot be deleted."}` for the active row; 404.
+  - `PUT /api/mis/school-years/set-active/{id}` (admin) → 200 `{school_year}` (`is_active` true, all others false, in one transaction); 404 changes nothing.
+  - `GET /api/mis/school-years/get-active` (admin, registrar) → 200 `{school_year}` or `{"school_year": null}`.
 - Roles: `roles` + `role_user` pivot (many-to-many); names are `Role::ADMIN` / `Role::REGISTRAR` constants (`Role::STAFF_ROLES`). `User::hasAnyRole()` is the role check.
 - Middleware: `role:` alias → `RoleMiddleware` (any-match, 403 `{message}`); `ForceJsonResponse` prepended to the api group in `bootstrap/app.php` (built in mis-1).
-- Errors are always JSON; validation via FormRequest or `$request->validate()`; list endpoints `paginate()`.
+- Errors are always JSON; validation via FormRequest or `$request->validate()`; list endpoints `paginate()`, except `GET /api/mis/school-years` (all rows, decided mis-3 AMBIGUITY-5).
 
 ## Work Guidance
 
