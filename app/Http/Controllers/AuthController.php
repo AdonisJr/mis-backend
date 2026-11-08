@@ -15,6 +15,8 @@ class AuthController extends Controller
 {
     private const TOKEN_NAME = 'mis';
 
+    public const DEACTIVATED_MESSAGE = 'This account is deactivated.';
+
     public function login(LoginUserRequest $request): JsonResponse
     {
         $user = User::where('email', $request->validated('email'))->first();
@@ -22,6 +24,11 @@ class AuthController extends Controller
         // same error for unknown email and wrong password so the response does not reveal which accounts exist
         if (! $user || ! Hash::check($request->validated('password'), $user->password)) {
             throw ValidationException::withMessages(['email' => __('auth.failed')]);
+        }
+
+        // checked after the password so the deactivated notice never confirms an account to someone without its credentials
+        if (! $user->is_active) {
+            throw ValidationException::withMessages(['email' => self::DEACTIVATED_MESSAGE]);
         }
 
         $plainTextToken = $user->createToken(self::TOKEN_NAME)->plainTextToken;

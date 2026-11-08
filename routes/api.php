@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\SchoolYearController;
 use App\Http\Controllers\StudentController;
 use App\Models\Role;
@@ -25,5 +26,11 @@ Route::prefix('mis')->group(function () {
         Route::post('/school-years', [SchoolYearController::class, 'createSchoolYear']);
         Route::put('/school-years/{id}', [SchoolYearController::class, 'updateSchoolYear'])->whereNumber('id');
         Route::delete('/school-years/{id}', [SchoolYearController::class, 'deleteSchoolYear'])->whereNumber('id');
+        Route::get('/employees', [EmployeeController::class, 'listEmployees']);
+        Route::post('/employees', [EmployeeController::class, 'createEmployee']);
+        Route::put('/employees/{id}', [EmployeeController::class, 'updateEmployee'])->whereNumber('id');
+        Route::put('/employees/{id}/password', [EmployeeController::class, 'setEmployeePassword'])->whereNumber('id');
+        Route::put('/employees/{id}/deactivate', [EmployeeController::class, 'deactivateEmployee'])->whereNumber('id');
+        Route::put('/employees/{id}/reactivate', [EmployeeController::class, 'reactivateEmployee'])->whereNumber('id');
     });
 });
