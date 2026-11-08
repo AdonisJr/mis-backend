@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\GradeLevel;
+use App\Models\Program;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -17,6 +19,21 @@ class DatabaseSeederTest extends TestCase
     private const ADMIN_EMAIL = 'admin@gmail.com';
 
     private const ADMIN_PASSWORD = '123';
+
+    private const PROGRAMS_URL = '/api/mis/programs';
+
+    private const TOKEN_NAME = 'test';
+
+    private const EXPECTED_DEMO_PROGRAMS = [
+        'STEM' => ['name' => 'Science, Technology, Engineering and Mathematics', 'stage' => GradeLevel::STAGE_SHS],
+        'ABM' => ['name' => 'Accountancy, Business and Management', 'stage' => GradeLevel::STAGE_SHS],
+        'HUMSS' => ['name' => 'Humanities and Social Sciences', 'stage' => GradeLevel::STAGE_SHS],
+        'GAS' => ['name' => 'General Academic Strand', 'stage' => GradeLevel::STAGE_SHS],
+        'TVL' => ['name' => 'Technical-Vocational-Livelihood', 'stage' => GradeLevel::STAGE_SHS],
+        'BSIT' => ['name' => 'Bachelor of Science in Information Technology', 'stage' => GradeLevel::STAGE_COLLEGE],
+        'BSCS' => ['name' => 'Bachelor of Science in Computer Science', 'stage' => GradeLevel::STAGE_COLLEGE],
+        'BSBA' => ['name' => 'Bachelor of Science in Business Administration', 'stage' => GradeLevel::STAGE_COLLEGE],
+    ];
 
     protected function setUp(): void
     {
@@ -70,5 +87,87 @@ class DatabaseSeederTest extends TestCase
         }
 
         $this->assertSame(0, User::count());
+        $this->assertSame(0, Program::count());
+    }
+
+    public function test_seeder_creates_demo_programs(): void
+    {
+        $this->seed();
+
+        foreach (self::EXPECTED_DEMO_PROGRAMS as $programCode => $expectedProgram) {
+            $seededProgram = Program::where('code', $programCode)->firstOrFail();
+            $this->assertSame($expectedProgram['name'], $seededProgram->name);
+            $this->assertSame($expectedProgram['stage'], $seededProgram->stage);
+            $this->assertNull($seededProgram->description);
+            $this->assertTrue($seededProgram->is_active);
+        }
+    }
+
+    public function test_seeder_adds_each_program_once(): void
+    {
+        $this->seed();
+
+        $this->assertSame(8, Program::count());
+        $expectedCodes = array_keys(self::EXPECTED_DEMO_PROGRAMS);
+        sort($expectedCodes);
+        $this->assertSame($expectedCodes, Program::pluck('code')->sort()->values()->all());
+        $this->assertEachDemoProgramStoredOnce();
+    }
+
+    public function test_reseeding_creates_no_duplicate_programs(): void
+    {
+        $this->seed();
+        $this->seed();
+
+        $this->assertSame(8, Program::count());
+        $this->assertEachDemoProgramStoredOnce();
+    }
+
+    public function test_reseeding_keeps_admin_edits_to_programs(): void
+    {
+        $this->seed();
+        $stemProgram = Program::where('code', 'STEM')->firstOrFail();
+        $stemProgram->update(['name' => 'Renamed Strand']);
+        $stemProgram->forceFill(['is_active' => false])->save();
+
+        $this->seed();
+
+        $reseededStem = Program::where('code', 'STEM')->firstOrFail();
+        $this->assertSame('Renamed Strand', $reseededStem->name);
+        $this->assertFalse($reseededStem->is_active);
+        $this->assertSame(8, Program::count());
+    }
+
+    public function test_seeder_leaves_grade_levels_unchanged(): void
+    {
+        $gradeLevelsBefore = GradeLevel::orderBy('sort_order')->get(['id', 'name', 'stage', 'sort_order'])->toArray();
+
+        $this->seed();
+
+        $this->assertSame($gradeLevelsBefore, GradeLevel::orderBy('sort_order')->get(['id', 'name', 'stage', 'sort_order'])->toArray());
+        $this->assertSame(10, GradeLevel::count());
+    }
+
+    public function test_seeded_programs_are_listed_by_code(): void
+    {
+        $this->seed();
+        $adminToken = User::where('email', self::ADMIN_EMAIL)->firstOrFail()->createToken(self::TOKEN_NAME)->plainTextToken;
+
+        $listResponse = $this->withToken($adminToken)
+            ->getJson(self::PROGRAMS_URL)
+            ->assertOk()
+            ->assertJsonPath('meta.total', 8);
+
+        $this->assertSame(
+            ['ABM', 'BSBA', 'BSCS', 'BSIT', 'GAS', 'HUMSS', 'STEM', 'TVL'],
+            array_column($listResponse->json('programs'), 'code'),
+        );
+    }
+
+    private function assertEachDemoProgramStoredOnce(): void
+    {
+        foreach (array_keys(self::EXPECTED_DEMO_PROGRAMS) as $programCode) {
+            $this->assertSame(1, Program::where('code', $programCode)->count(), $programCode.' must be stored once');
+        }
     }
 }
