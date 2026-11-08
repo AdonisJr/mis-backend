@@ -13,6 +13,9 @@ use Illuminate\Support\Str;
  */
 class UserFactory extends Factory
 {
+    // 08-prefixed so a factory contact never equals a fixed 09-prefixed test contact
+    private const CONTACT_PATTERN = '08#########';
+
     /**
      * The current password being used by the factory.
      */
@@ -56,5 +59,15 @@ class UserFactory extends Factory
         return $this->afterCreating(function (User $user) {
             $user->roles()->attach(Role::firstOrCreate(['name' => Role::REGISTRAR]));
         });
+    }
+
+    public function inactive(): static
+    {
+        return $this->state(fn (array $attributes) => ['is_active' => false]);
+    }
+
+    public function withContact(): static
+    {
+        return $this->state(fn (array $attributes) => ['contact' => fake()->numerify(self::CONTACT_PATTERN)]);
     }
 }

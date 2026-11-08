@@ -2,18 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\SearchesPaginatedLists;
 use App\Http\Requests\ListStudentsRequest;
 use App\Http\Requests\StoreStudentRequest;
 use App\Http\Requests\UpdateStudentRequest;
 use App\Http\Resources\StudentResource;
 use App\Models\Student;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 class StudentController extends Controller
 {
+    use SearchesPaginatedLists;
+
     private const SEARCH_COLUMNS = ['lrn', 'first_name', 'middle_name', 'last_name'];
 
     public function listStudents(ListStudentsRequest $request): JsonResponse
@@ -56,33 +58,8 @@ class StudentController extends Controller
         return response()->noContent();
     }
 
-    private function applySearch(Builder $studentQuery, string $search): void
+    protected function getSearchColumns(): array
     {
-        // no `u` flag: mb_strtolower already replaced invalid UTF-8, and preg_split with `u` would return false on it
-        $searchWords = preg_split('/\s+/', mb_strtolower($search), -1, PREG_SPLIT_NO_EMPTY);
-
-        foreach ($searchWords as $searchWord) {
-            $this->applySearchWord($studentQuery, $searchWord);
-        }
-    }
-
-    private function applySearchWord(Builder $studentQuery, string $searchWord): void
-    {
-        $studentQuery->where(function (Builder $wordQuery) use ($searchWord) {
-            foreach (self::SEARCH_COLUMNS as $column) {
-                // LOWER on both sides keeps the match case-insensitive on SQLite, MySQL and PostgreSQL alike
-                $wordQuery->orWhereRaw('LOWER('.$column.') LIKE ?', ['%'.$searchWord.'%']);
-            }
-        });
-    }
-
-    private function buildPageMeta(LengthAwarePaginator $studentPage): array
-    {
-        return [
-            'current_page' => $studentPage->currentPage(),
-            'last_page' => $studentPage->lastPage(),
-            'per_page' => $studentPage->perPage(),
-            'total' => $studentPage->total(),
-        ];
+        return self::SEARCH_COLUMNS;
     }
 }

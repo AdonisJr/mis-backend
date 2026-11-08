@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\AuthController;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -141,5 +142,31 @@ class AuthLoginTest extends TestCase
         $this->withToken($firstToken)->getJson(self::CURRENT_USER_URL)->assertOk();
         $this->app['auth']->forgetGuards();
         $this->withToken($secondToken)->getJson(self::CURRENT_USER_URL)->assertOk();
+    }
+
+    public function test_inactive_account_cannot_log_in(): void
+    {
+        $inactiveUser = User::factory()->admin()->inactive()->create(['password' => self::PASSWORD]);
+
+        $this->postJson(self::LOGIN_URL, ['email' => $inactiveUser->email, 'password' => self::PASSWORD])
+            ->assertUnprocessable()
+            ->assertExactJson([
+                'message' => AuthController::DEACTIVATED_MESSAGE,
+                'errors' => ['email' => [AuthController::DEACTIVATED_MESSAGE]],
+            ]);
+
+        $this->assertSame(0, PersonalAccessToken::count());
+    }
+
+    public function test_inactive_account_with_wrong_password_gets_generic_failure(): void
+    {
+        $inactiveUser = User::factory()->admin()->inactive()->create(['password' => self::PASSWORD]);
+
+        $this->postJson(self::LOGIN_URL, ['email' => $inactiveUser->email, 'password' => self::WRONG_PASSWORD])
+            ->assertUnprocessable()
+            ->assertJsonPath('message', __('auth.failed'))
+            ->assertJsonPath('errors.email.0', __('auth.failed'));
+
+        $this->assertSame(0, PersonalAccessToken::count());
     }
 }
