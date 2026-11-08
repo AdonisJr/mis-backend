@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\GradeLevelController;
+use App\Http\Controllers\ProgramController;
 use App\Http\Controllers\SchoolYearController;
 use App\Http\Controllers\StudentController;
 use App\Models\Role;
@@ -18,6 +20,8 @@ Route::prefix('mis')->group(function () {
         Route::post('/students', [StudentController::class, 'createStudent']);
         Route::put('/students/{id}', [StudentController::class, 'updateStudent'])->whereNumber('id');
         Route::delete('/students/{id}', [StudentController::class, 'deleteStudent'])->whereNumber('id');
+        Route::get('/grade-levels', [GradeLevelController::class, 'listGradeLevels']);
+        Route::get('/programs', [ProgramController::class, 'listPrograms']);
     });
 
     Route::middleware(['auth:sanctum', 'role:'.Role::ADMIN])->group(function () {
@@ -32,5 +36,10 @@ Route::prefix('mis')->group(function () {
         Route::put('/employees/{id}/password', [EmployeeController::class, 'setEmployeePassword'])->whereNumber('id');
         Route::put('/employees/{id}/deactivate', [EmployeeController::class, 'deactivateEmployee'])->whereNumber('id');
         Route::put('/employees/{id}/reactivate', [EmployeeController::class, 'reactivateEmployee'])->whereNumber('id');
+        Route::post('/programs', [ProgramController::class, 'createProgram']);
+        Route::put('/programs/{id}', [ProgramController::class, 'updateProgram'])->whereNumber('id');
+        Route::put('/programs/{id}/deactivate', [ProgramController::class, 'deactivateProgram'])->whereNumber('id');
+        Route::put('/programs/{id}/reactivate', [ProgramController::class, 'reactivateProgram'])->whereNumber('id');
+        Route::delete('/programs/{id}', [ProgramController::class, 'deleteProgram'])->whereNumber('id');
     });
 });
