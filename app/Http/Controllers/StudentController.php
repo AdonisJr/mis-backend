@@ -16,14 +16,17 @@ class StudentController extends Controller
 {
     use SearchesPaginatedLists;
 
+    public const ENROLLMENTS_DELETE_MESSAGE = 'The student has enrollments and cannot be deleted.';
+
     private const SEARCH_COLUMNS = ['lrn', 'first_name', 'middle_name', 'last_name'];
+
+    private const CURRENT_ENROLLMENT_RELATIONS = ['currentEnrollments.section.gradeLevel'];
 
     public function listStudents(ListStudentsRequest $request): JsonResponse
     {
-        $studentQuery = Student::query()->orderByDesc('created_at')->orderByDesc('id');
+        $studentQuery = Student::query()->with(self::CURRENT_ENROLLMENT_RELATIONS)->orderByDesc('created_at')->orderByDesc('id');
         $this->applySearch($studentQuery, (string) $request->validated('search'));
-        $studentQuery->when($request->filled('grade_level'), fn (Builder $query) => $query->where('grade_level', $request->validated('grade_level')));
-        $studentQuery->when($request->filled('section'), fn (Builder $query) => $query->where('section', $request->validated('section')));
+        $studentQuery->when($request->filled('grade_level_id'), fn (Builder $query) => $query->whereHas('currentEnrollments', fn (Builder $enrollmentQuery) => $enrollmentQuery->whereHas('section', fn (Builder $sectionQuery) => $sectionQuery->where('grade_level_id', $request->validated('grade_level_id')))));
         $studentPage = $studentQuery->paginate();
 
         return response()->json([
@@ -34,7 +37,7 @@ class StudentController extends Controller
 
     public function createStudent(StoreStudentRequest $request): JsonResponse
     {
-        $student = Student::create($request->validated());
+        $student = Student::create($request->validated())->load(self::CURRENT_ENROLLMENT_RELATIONS);
 
         return response()->json([
             'student' => StudentResource::make($student),
@@ -45,6 +48,7 @@ class StudentController extends Controller
     {
         $student = Student::findOrFail($id);
         $student->update($request->validated());
+        $student->load(self::CURRENT_ENROLLMENT_RELATIONS);
 
         return response()->json([
             'student' => StudentResource::make($student),
@@ -53,7 +57,13 @@ class StudentController extends Controller
 
     public function deleteStudent(int $id): Response
     {
-        Student::findOrFail($id)->delete();
+        $student = Student::findOrFail($id);
+
+        if ($student->enrollments()->exists()) {
+            return response()->json(['message' => self::ENROLLMENTS_DELETE_MESSAGE], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $student->delete();
 
         return response()->noContent();
     }

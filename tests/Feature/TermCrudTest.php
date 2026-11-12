@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\TermController;
+use App\Models\Enrollment;
 use App\Models\SchoolYear;
 use App\Models\Term;
 use App\Models\User;
@@ -337,6 +339,34 @@ class TermCrudTest extends TestCase
 
         $this->assertSame(['1st Semester'], array_column($listResponse->json('terms'), 'label'));
         $this->assertDatabaseMissing('terms', ['id' => $secondTerm->id]);
+    }
+
+    public function test_delete_term_with_enrollments_returns_422(): void
+    {
+        $schoolYear = SchoolYear::factory()->create(self::SEMESTER_YEAR);
+        $term = $this->createTerm($schoolYear, self::FIRST_SEMESTER);
+        Enrollment::factory()->shs()->create(['term_id' => $term->id]);
+
+        $this->withToken($this->createAdminToken())
+            ->deleteJson(self::TERMS_URL.'/'.$term->id)
+            ->assertUnprocessable()
+            ->assertExactJson(['message' => TermController::ENROLLMENTS_DELETE_MESSAGE]);
+
+        $this->assertDatabaseHas('terms', ['id' => $term->id]);
+    }
+
+    public function test_delete_active_term_with_enrollments_reports_active_term(): void
+    {
+        $schoolYear = SchoolYear::factory()->create(self::SEMESTER_YEAR);
+        $term = $this->createTerm($schoolYear, [...self::FIRST_SEMESTER, 'is_active' => true]);
+        Enrollment::factory()->shs()->create(['term_id' => $term->id]);
+
+        $this->withToken($this->createAdminToken())
+            ->deleteJson(self::TERMS_URL.'/'.$term->id)
+            ->assertUnprocessable()
+            ->assertExactJson(['message' => TermController::ACTIVE_DELETE_MESSAGE]);
+
+        $this->assertDatabaseHas('terms', ['id' => $term->id]);
     }
 
     public function test_delete_missing_term_returns_404(): void

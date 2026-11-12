@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\GradeLevelController;
 use App\Http\Controllers\ProgramController;
 use App\Http\Controllers\SchoolYearController;
@@ -18,6 +19,7 @@ Route::prefix('mis')->group(function () {
         Route::get('/user', [AuthController::class, 'fetchCurrentUser']);
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/school-years/get-active', [SchoolYearController::class, 'fetchActiveSchoolYear']);
+        Route::get('/school-years', [SchoolYearController::class, 'listSchoolYears']);
         Route::get('/students', [StudentController::class, 'listStudents']);
         Route::post('/students', [StudentController::class, 'createStudent']);
         Route::put('/students/{id}', [StudentController::class, 'updateStudent'])->whereNumber('id');
@@ -27,11 +29,16 @@ Route::prefix('mis')->group(function () {
         Route::get('/school-years/{id}/terms', [TermController::class, 'listTerms'])->whereNumber('id');
         Route::get('/terms/get-active', [TermController::class, 'fetchActiveTerm']);
         Route::get('/sections', [SectionController::class, 'listSections']);
+        Route::get('/enrollments', [EnrollmentController::class, 'listEnrollments']);
+        Route::post('/enrollments', [EnrollmentController::class, 'enrollStudent']);
+        Route::put('/enrollments/{id}/move', [EnrollmentController::class, 'moveEnrollment'])->whereNumber('id');
+        Route::put('/enrollments/{id}/drop', [EnrollmentController::class, 'dropEnrollment'])->whereNumber('id');
+        Route::put('/enrollments/{id}/transfer', [EnrollmentController::class, 'transferEnrollment'])->whereNumber('id');
+        Route::put('/enrollments/{id}/complete', [EnrollmentController::class, 'completeEnrollment'])->whereNumber('id');
     });
 
     Route::middleware(['auth:sanctum', 'role:'.Role::ADMIN])->group(function () {
         Route::put('/school-years/set-active/{id}', [SchoolYearController::class, 'setActiveSchoolYear'])->whereNumber('id');
-        Route::get('/school-years', [SchoolYearController::class, 'listSchoolYears']);
         Route::post('/school-years', [SchoolYearController::class, 'createSchoolYear']);
         Route::put('/school-years/{id}', [SchoolYearController::class, 'updateSchoolYear'])->whereNumber('id');
         Route::delete('/school-years/{id}', [SchoolYearController::class, 'deleteSchoolYear'])->whereNumber('id');

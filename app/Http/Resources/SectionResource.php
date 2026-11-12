@@ -26,6 +26,7 @@ class SectionResource extends JsonResource
             'updated_at' => $this->updated_at,
             'grade_level' => $this->buildGradeLevelSummary(),
             'program' => $this->buildProgramSummary(),
+            'enrolled_count' => $this->enrolled_count,
         ];
     }
 

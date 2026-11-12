@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Http\Controllers\SchoolYearController;
 use App\Http\Requests\UpdateSchoolYearRequest;
+use App\Models\Enrollment;
 use App\Models\SchoolYear;
 use App\Models\Section;
 use App\Models\Term;
@@ -644,6 +645,22 @@ class SchoolYearCrudTest extends TestCase
         $this->assertNotNull($schoolYear->fresh());
         $this->assertSame(1, Term::where('school_year_id', $schoolYear->id)->count());
         $this->assertNotNull($section->fresh());
+    }
+
+    public function test_delete_school_year_with_enrollments_returns_422(): void
+    {
+        $schoolYear = SchoolYear::factory()->create(self::SEMESTER_YEAR);
+        $section = Section::factory()->jhs()->create(['school_year_id' => $schoolYear->id]);
+        $enrollment = Enrollment::factory()->create(['section_id' => $section->id]);
+
+        $this->withToken($this->createTokenFor(User::factory()->admin()->create()))
+            ->deleteJson(self::SCHOOL_YEARS_URL.'/'.$schoolYear->id)
+            ->assertUnprocessable()
+            ->assertExactJson(['message' => SchoolYearController::SECTIONS_DELETE_MESSAGE]);
+
+        $this->assertNotNull($schoolYear->fresh());
+        $this->assertNotNull($section->fresh());
+        $this->assertNotNull($enrollment->fresh());
     }
 
     public function test_delete_active_school_year_with_sections_reports_active_year(): void

@@ -32,8 +32,6 @@ class StudentAccessTest extends TestCase
         'last_name' => 'Dela Cruz',
         'birth_date' => '2010-05-14',
         'gender' => 'female',
-        'grade_level' => 'Grade 10',
-        'section' => 'Rizal',
         'address' => 'Purok 3, Barangay Poblacion',
         'contact' => '09181234567',
         'guardian_name' => 'Maria Dela Cruz',
@@ -169,9 +167,9 @@ class StudentAccessTest extends TestCase
             ->json('student.id');
 
         $this->withToken($token)
-            ->putJson(self::STUDENTS_URL.'/'.$createdStudentId, [...self::VALID_PAYLOAD, 'section' => 'Bonifacio'])
+            ->putJson(self::STUDENTS_URL.'/'.$createdStudentId, [...self::VALID_PAYLOAD, 'middle_name' => 'Bonifacio'])
             ->assertOk()
-            ->assertJsonPath('student.section', 'Bonifacio');
+            ->assertJsonPath('student.middle_name', 'Bonifacio');
 
         $this->withToken($token)
             ->deleteJson(self::STUDENTS_URL.'/'.$createdStudentId)
@@ -184,7 +182,7 @@ class StudentAccessTest extends TestCase
     {
         $this->assertDatabaseCount('students', 1);
         $this->assertSame($student->lrn, $student->fresh()->lrn);
-        $this->assertSame($student->section, $student->fresh()->section);
+        $this->assertSame($student->middle_name, $student->fresh()->middle_name);
     }
 
     private function createTokenFor(User $user): string

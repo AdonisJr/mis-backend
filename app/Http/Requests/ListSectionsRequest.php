@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Models\GradeLevel;
 use App\Models\Program;
 use App\Models\SchoolYear;
+use App\Models\Term;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -31,6 +32,7 @@ class ListSectionsRequest extends FormRequest
             'school_year_id' => StoreSectionRequest::buildIdRules('required', SchoolYear::class),
             'grade_level_id' => StoreSectionRequest::buildIdRules('nullable', GradeLevel::class),
             'program_id' => StoreSectionRequest::buildIdRules('nullable', Program::class),
+            'term_id' => StoreSectionRequest::buildIdRules('nullable', Term::class),
             'search' => self::SEARCH_RULES,
         ];
     }
