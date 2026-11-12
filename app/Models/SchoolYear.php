@@ -65,4 +65,10 @@ class SchoolYear extends Model
         // chaperone hands each loaded term its parent, so term labels never lazy-load the school year per row
         return $this->hasMany(Term::class)->chaperone('schoolYear');
     }
+
+    /** @return HasMany<Section, $this> */
+    public function sections(): HasMany
+    {
+        return $this->hasMany(Section::class);
+    }
 }

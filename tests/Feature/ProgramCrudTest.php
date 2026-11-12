@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\ProgramController;
 use App\Models\GradeLevel;
 use App\Models\Program;
+use App\Models\Section;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -471,6 +473,63 @@ class ProgramCrudTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['stage']);
         $this->assertSame(0, Program::where('stage', GradeLevel::STAGE_JHS)->count());
+    }
+
+    public function test_delete_program_with_sections_returns_422(): void
+    {
+        $adminToken = $this->createAdminToken();
+        $program = Program::factory()->create(self::STEM_PROGRAM);
+        Section::factory()->create(['program_id' => $program->id]);
+
+        $this->withToken($adminToken)
+            ->deleteJson(self::PROGRAMS_URL.'/'.$program->id)
+            ->assertUnprocessable()
+            ->assertExactJson(['message' => ProgramController::SECTIONS_DELETE_MESSAGE]);
+
+        $this->assertNotNull($program->fresh());
+        $this->assertDatabaseCount('sections', 1);
+        $listedCodes = $this->withToken($adminToken)->getJson(self::PROGRAMS_URL)->assertOk()->json('programs.*.code');
+        $this->assertContains('STEM', $listedCodes);
+    }
+
+    public function test_delete_inactive_program_with_sections_returns_422(): void
+    {
+        $program = Program::factory()->inactive()->create(self::STEM_PROGRAM);
+        Section::factory()->create(['program_id' => $program->id]);
+
+        $this->withToken($this->createAdminToken())
+            ->deleteJson(self::PROGRAMS_URL.'/'.$program->id)
+            ->assertUnprocessable()
+            ->assertExactJson(['message' => ProgramController::SECTIONS_DELETE_MESSAGE]);
+
+        $this->assertNotNull($program->fresh());
+    }
+
+    public function test_delete_program_without_sections_still_deletes(): void
+    {
+        $stemProgram = Program::factory()->create(self::STEM_PROGRAM);
+        $abmProgram = Program::factory()->create(self::ABM_PROGRAM);
+        Section::factory()->create(['program_id' => $stemProgram->id]);
+
+        $this->withToken($this->createAdminToken())
+            ->deleteJson(self::PROGRAMS_URL.'/'.$abmProgram->id)
+            ->assertNoContent();
+
+        $this->assertDatabaseMissing('programs', ['code' => 'ABM']);
+        $this->assertNotNull($stemProgram->fresh());
+    }
+
+    public function test_program_with_sections_can_be_deactivated(): void
+    {
+        $program = Program::factory()->create(self::STEM_PROGRAM);
+        $section = Section::factory()->create(['program_id' => $program->id]);
+
+        $this->withToken($this->createAdminToken())
+            ->putJson(self::PROGRAMS_URL.'/'.$program->id.'/deactivate')
+            ->assertOk()
+            ->assertJsonPath('program.is_active', false);
+
+        $this->assertSame($program->id, $section->fresh()->program_id);
     }
 
     private function createAdminToken(): string

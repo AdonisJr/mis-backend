@@ -5,6 +5,7 @@ use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\GradeLevelController;
 use App\Http\Controllers\ProgramController;
 use App\Http\Controllers\SchoolYearController;
+use App\Http\Controllers\SectionController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\TermController;
 use App\Models\Role;
@@ -25,6 +26,7 @@ Route::prefix('mis')->group(function () {
         Route::get('/programs', [ProgramController::class, 'listPrograms']);
         Route::get('/school-years/{id}/terms', [TermController::class, 'listTerms'])->whereNumber('id');
         Route::get('/terms/get-active', [TermController::class, 'fetchActiveTerm']);
+        Route::get('/sections', [SectionController::class, 'listSections']);
     });
 
     Route::middleware(['auth:sanctum', 'role:'.Role::ADMIN])->group(function () {
@@ -48,5 +50,8 @@ Route::prefix('mis')->group(function () {
         Route::post('/school-years/{id}/terms', [TermController::class, 'createTerm'])->whereNumber('id');
         Route::put('/terms/{id}', [TermController::class, 'updateTerm'])->whereNumber('id');
         Route::delete('/terms/{id}', [TermController::class, 'deleteTerm'])->whereNumber('id');
+        Route::post('/sections', [SectionController::class, 'createSection']);
+        Route::put('/sections/{id}', [SectionController::class, 'updateSection'])->whereNumber('id');
+        Route::delete('/sections/{id}', [SectionController::class, 'deleteSection'])->whereNumber('id');
     });
 });

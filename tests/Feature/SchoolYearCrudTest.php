@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Http\Controllers\SchoolYearController;
 use App\Http\Requests\UpdateSchoolYearRequest;
 use App\Models\SchoolYear;
+use App\Models\Section;
 use App\Models\Term;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -627,6 +628,51 @@ class SchoolYearCrudTest extends TestCase
 
         $this->assertSame(0, Term::where('school_year_id', $semesterYear->id)->count());
         $this->assertNotNull($trimesterTerm->fresh());
+    }
+
+    public function test_delete_school_year_with_sections_returns_422(): void
+    {
+        $schoolYear = SchoolYear::factory()->create(self::SEMESTER_YEAR);
+        $this->createTerm($schoolYear, self::FIRST_SEMESTER);
+        $section = Section::factory()->jhs()->create(['school_year_id' => $schoolYear->id]);
+
+        $this->withToken($this->createTokenFor(User::factory()->admin()->create()))
+            ->deleteJson(self::SCHOOL_YEARS_URL.'/'.$schoolYear->id)
+            ->assertUnprocessable()
+            ->assertExactJson(['message' => SchoolYearController::SECTIONS_DELETE_MESSAGE]);
+
+        $this->assertNotNull($schoolYear->fresh());
+        $this->assertSame(1, Term::where('school_year_id', $schoolYear->id)->count());
+        $this->assertNotNull($section->fresh());
+    }
+
+    public function test_delete_active_school_year_with_sections_reports_active_year(): void
+    {
+        $schoolYear = SchoolYear::factory()->active()->create(self::SEMESTER_YEAR);
+        Section::factory()->jhs()->create(['school_year_id' => $schoolYear->id]);
+
+        $this->withToken($this->createTokenFor(User::factory()->admin()->create()))
+            ->deleteJson(self::SCHOOL_YEARS_URL.'/'.$schoolYear->id)
+            ->assertUnprocessable()
+            ->assertExactJson(['message' => SchoolYearController::ACTIVE_DELETE_MESSAGE]);
+
+        $this->assertTrue($schoolYear->fresh()->is_active);
+    }
+
+    public function test_deleting_school_year_without_sections_still_deletes_its_terms(): void
+    {
+        $trimesterYear = SchoolYear::factory()->create(self::TRIMESTER_YEAR);
+        $this->createTerm($trimesterYear, ['term_number' => 1, 'start_date' => '2031-06-01', 'end_date' => '2031-09-30']);
+        $semesterYear = SchoolYear::factory()->create(self::SEMESTER_YEAR);
+        $semesterSection = Section::factory()->jhs()->create(['school_year_id' => $semesterYear->id]);
+
+        $this->withToken($this->createTokenFor(User::factory()->admin()->create()))
+            ->deleteJson(self::SCHOOL_YEARS_URL.'/'.$trimesterYear->id)
+            ->assertNoContent();
+
+        $this->assertSame(0, Term::where('school_year_id', $trimesterYear->id)->count());
+        $this->assertNotNull($semesterYear->fresh());
+        $this->assertNotNull($semesterSection->fresh());
     }
 
     /**

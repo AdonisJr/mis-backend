@@ -18,6 +18,8 @@ class ProgramController extends Controller
 
     private const SEARCH_COLUMNS = ['code', 'name'];
 
+    public const SECTIONS_DELETE_MESSAGE = 'The program has sections and cannot be deleted.';
+
     public function listPrograms(ListProgramsRequest $request): JsonResponse
     {
         $programQuery = Program::query()->orderBy('code');
@@ -63,7 +65,13 @@ class ProgramController extends Controller
 
     public function deleteProgram(int $id): Response
     {
-        Program::findOrFail($id)->delete();
+        $program = Program::findOrFail($id);
+
+        if ($program->sections()->exists()) {
+            return response()->json(['message' => self::SECTIONS_DELETE_MESSAGE], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $program->delete();
 
         return response()->noContent();
     }
