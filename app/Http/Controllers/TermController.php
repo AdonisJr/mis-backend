@@ -17,6 +17,8 @@ class TermController extends Controller
 {
     public const ACTIVE_DELETE_MESSAGE = 'The active term cannot be deleted.';
 
+    public const ENROLLMENTS_DELETE_MESSAGE = 'The term has enrollments and cannot be deleted.';
+
     public const INACTIVE_SCHOOL_YEAR_MESSAGE = 'Only a term of the active school year can be set active.';
 
     private const TRANSACTION_ATTEMPTS = 3;
@@ -52,7 +54,14 @@ class TermController extends Controller
 
     public function deleteTerm(int $id): Response
     {
-        Term::findOrFail($id);
+        $term = Term::findOrFail($id);
+        $hasBlockingEnrollments = ! $term->is_active && $term->enrollments()->exists();
+
+        // the active-term message wins, so an active term with enrollments falls through to the conditional delete
+        if ($hasBlockingEnrollments) {
+            return response()->json(['message' => self::ENROLLMENTS_DELETE_MESSAGE], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
         $deletedCount = Term::whereKey($id)->where('is_active', false)->delete();
 
         // the conditional delete is the guard, so a concurrent set-active cannot slip in between check and delete

@@ -2,9 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Models\Enrollment;
+use App\Models\GradeLevel;
+use App\Models\SchoolYear;
+use App\Models\Section;
 use App\Models\Student;
+use App\Models\Term;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
@@ -20,8 +26,8 @@ class StudentListTest extends TestCase
     private const PAGE_SIZE = 15;
 
     private const STUDENT_KEYS = [
-        'id', 'lrn', 'first_name', 'middle_name', 'last_name', 'birth_date', 'gender', 'grade_level', 'section',
-        'address', 'contact', 'guardian_name', 'guardian_relationship', 'guardian_contact', 'rfid',
+        'id', 'lrn', 'first_name', 'middle_name', 'last_name', 'birth_date', 'gender',
+        'address', 'contact', 'guardian_name', 'guardian_relationship', 'guardian_contact', 'rfid', 'current_enrollment',
         'created_at', 'updated_at',
     ];
 
@@ -30,8 +36,6 @@ class StudentListTest extends TestCase
         'first_name' => 'Andrea',
         'middle_name' => 'Santos',
         'last_name' => 'Dela Cruz',
-        'grade_level' => 'Grade 10',
-        'section' => 'Rizal',
     ];
 
     private const MIGUEL = [
@@ -39,8 +43,6 @@ class StudentListTest extends TestCase
         'first_name' => 'Miguel',
         'middle_name' => null,
         'last_name' => 'Reyes',
-        'grade_level' => '1st Year College',
-        'section' => 'BSIT',
     ];
 
     private const CARLO = [
@@ -48,8 +50,6 @@ class StudentListTest extends TestCase
         'first_name' => 'Carlo',
         'middle_name' => 'Garcia',
         'last_name' => 'Dela Rosa',
-        'grade_level' => 'Grade 10',
-        'section' => 'Bonifacio',
     ];
 
     public function test_list_returns_first_page_with_meta(): void
@@ -135,14 +135,13 @@ class StudentListTest extends TestCase
                     'last_name' => $student->last_name,
                     'birth_date' => '2010-05-14',
                     'gender' => $student->gender,
-                    'grade_level' => $student->grade_level,
-                    'section' => $student->section,
                     'address' => $student->address,
                     'contact' => $student->contact,
                     'guardian_name' => $student->guardian_name,
                     'guardian_relationship' => $student->guardian_relationship,
                     'guardian_contact' => $student->guardian_contact,
                     'rfid' => $student->rfid,
+                    'current_enrollment' => null,
                     'created_at' => $student->created_at->toJSON(),
                     'updated_at' => $student->updated_at->toJSON(),
                 ]],
@@ -229,31 +228,24 @@ class StudentListTest extends TestCase
 
     public function test_filter_by_grade_level(): void
     {
-        $andrea = Student::factory()->create(self::ANDREA);
-        $miguel = Student::factory()->create(self::MIGUEL);
+        [$jhsSection, $collegeSection] = $this->createActiveYearSections();
+        $andrea = $this->createEnrolledStudent(self::ANDREA, $jhsSection);
+        $miguel = $this->createEnrolledStudent(self::MIGUEL, $collegeSection);
 
-        $this->assertSame([$andrea->id], $this->fetchStudentIds(['grade_level' => 'Grade 10']));
-        $this->assertSame([$miguel->id], $this->fetchStudentIds(['grade_level' => '1st Year College']));
-    }
-
-    public function test_filter_by_section(): void
-    {
-        $andrea = Student::factory()->create(self::ANDREA);
-        $miguel = Student::factory()->create(self::MIGUEL);
-
-        $this->assertSame([$andrea->id], $this->fetchStudentIds(['section' => 'Rizal']));
-        $this->assertSame([$miguel->id], $this->fetchStudentIds(['section' => 'BSIT']));
+        $this->assertSame([$andrea->id], $this->fetchStudentIds(['grade_level_id' => $jhsSection->grade_level_id]));
+        $this->assertSame([$miguel->id], $this->fetchStudentIds(['grade_level_id' => $collegeSection->grade_level_id]));
     }
 
     public function test_search_and_filters_combine(): void
     {
-        $andrea = Student::factory()->create(self::ANDREA);
-        Student::factory()->create(self::MIGUEL);
-        $carlo = Student::factory()->create(self::CARLO);
+        [$jhsSection, $collegeSection] = $this->createActiveYearSections();
+        $andrea = $this->createEnrolledStudent(self::ANDREA, $jhsSection);
+        $this->createEnrolledStudent(self::MIGUEL, $collegeSection);
+        $this->createEnrolledStudent(self::CARLO, $collegeSection);
 
-        $this->assertEqualsCanonicalizing([$andrea->id, $carlo->id], $this->fetchStudentIds(['search' => 'dela']));
+        $this->assertCount(2, $this->fetchStudentIds(['search' => 'dela']));
 
-        $this->fetchStudentList(['search' => 'dela', 'grade_level' => 'Grade 10', 'section' => 'Rizal'])
+        $this->fetchStudentList(['search' => 'dela', 'grade_level_id' => $jhsSection->grade_level_id])
             ->assertOk()
             ->assertJsonCount(1, 'students')
             ->assertJsonPath('students.0.id', $andrea->id)
@@ -262,13 +254,105 @@ class StudentListTest extends TestCase
 
     public function test_filter_with_no_match_returns_empty_page(): void
     {
-        Student::factory()->create(self::ANDREA);
+        [$jhsSection] = $this->createActiveYearSections();
+        $this->createEnrolledStudent(self::ANDREA, $jhsSection);
         Student::factory()->create(self::MIGUEL);
 
-        $this->fetchStudentList(['grade_level' => 'Grade 12'])
+        $this->fetchStudentList(['grade_level_id' => GradeLevel::where('name', 'Grade 12')->value('id')])
             ->assertOk()
             ->assertJsonPath('students', [])
             ->assertJsonPath('meta.total', 0);
+    }
+
+    public function test_list_shows_current_enrollment_of_active_term(): void
+    {
+        $schoolYear = SchoolYear::factory()->active()->create();
+        $activeTerm = Term::factory()->active()->create(['school_year_id' => $schoolYear->id]);
+        $otherTerm = $this->createSecondTerm($schoolYear);
+        $shsSection = Section::factory()->create(['school_year_id' => $schoolYear->id]);
+        $currentStudent = Student::factory()->create(self::ANDREA);
+        $otherTermStudent = Student::factory()->create(self::MIGUEL);
+        $currentEnrollment = Enrollment::factory()->create(['student_id' => $currentStudent->id, 'section_id' => $shsSection->id, 'term_id' => $activeTerm->id]);
+        Enrollment::factory()->create(['student_id' => $otherTermStudent->id, 'section_id' => $shsSection->id, 'term_id' => $otherTerm->id]);
+
+        $currentEnrollments = $this->fetchCurrentEnrollments();
+
+        $this->assertSame([
+            'id' => $currentEnrollment->id,
+            'section_id' => $shsSection->id,
+            'term_id' => $activeTerm->id,
+            'section' => ['id' => $shsSection->id, 'name' => $shsSection->name],
+            'grade_level' => ['id' => $shsSection->grade_level_id, 'name' => $shsSection->gradeLevel->name, 'stage' => GradeLevel::STAGE_SHS],
+        ], $currentEnrollments[$currentStudent->id]);
+        $this->assertNull($currentEnrollments[$otherTermStudent->id]);
+    }
+
+    public function test_current_enrollment_is_whole_year_record_for_jhs(): void
+    {
+        [$jhsSection] = $this->createActiveYearSections();
+        Term::factory()->active()->create(['school_year_id' => $jhsSection->school_year_id]);
+        $andrea = $this->createEnrolledStudent(self::ANDREA, $jhsSection);
+
+        $currentEnrollment = $this->fetchCurrentEnrollments()[$andrea->id];
+
+        $this->assertSame($jhsSection->id, $currentEnrollment['section_id']);
+        $this->assertNull($currentEnrollment['term_id']);
+    }
+
+    public function test_current_enrollment_uses_enrolled_record_of_year_without_active_term(): void
+    {
+        $schoolYear = SchoolYear::factory()->active()->create();
+        $firstTerm = Term::factory()->create(['school_year_id' => $schoolYear->id]);
+        $secondTerm = $this->createSecondTerm($schoolYear);
+        $firstSection = Section::factory()->create(['school_year_id' => $schoolYear->id]);
+        $secondSection = Section::factory()->create(['school_year_id' => $schoolYear->id]);
+        $andrea = Student::factory()->create(self::ANDREA);
+        Enrollment::factory()->create(['student_id' => $andrea->id, 'section_id' => $firstSection->id, 'term_id' => $firstTerm->id]);
+        $newerEnrollment = Enrollment::factory()->create(['student_id' => $andrea->id, 'section_id' => $secondSection->id, 'term_id' => $secondTerm->id]);
+        Enrollment::factory()->closed(Enrollment::STATUS_DROPPED)->create(['student_id' => $andrea->id, 'section_id' => $firstSection->id, 'term_id' => $secondTerm->id]);
+
+        $this->assertSame($newerEnrollment->id, $this->fetchCurrentEnrollments()[$andrea->id]['id']);
+    }
+
+    public function test_current_enrollment_is_null_without_active_school_year(): void
+    {
+        $andrea = Student::factory()->create(self::ANDREA);
+        Enrollment::factory()->create(['student_id' => $andrea->id]);
+
+        $this->assertNull($this->fetchCurrentEnrollments()[$andrea->id]);
+    }
+
+    public function test_grade_level_filter_ignores_closed_and_past_records(): void
+    {
+        [$activeSection] = $this->createActiveYearSections();
+        $pastSection = Section::factory()->jhs()->create();
+        $closedStudent = Student::factory()->create(self::ANDREA);
+        $pastStudent = Student::factory()->create(self::MIGUEL);
+        $currentStudent = $this->createEnrolledStudent(self::CARLO, $activeSection);
+        Enrollment::factory()->closed(Enrollment::STATUS_DROPPED)->create(['student_id' => $closedStudent->id, 'section_id' => $activeSection->id]);
+        Enrollment::factory()->create(['student_id' => $pastStudent->id, 'section_id' => $pastSection->id]);
+
+        $this->assertSame([$currentStudent->id], $this->fetchStudentIds(['grade_level_id' => $activeSection->grade_level_id]));
+    }
+
+    public function test_list_query_count_is_independent_of_rows(): void
+    {
+        [$jhsSection, $collegeSection] = $this->createActiveYearSections();
+        $adminToken = $this->createTokenFor(User::factory()->admin()->create());
+        $this->createEnrolledStudent(self::ANDREA, $jhsSection);
+
+        DB::enableQueryLog();
+        $this->withToken($adminToken)->getJson(self::STUDENTS_URL)->assertOk()->assertJsonCount(1, 'students');
+        $singleRowCount = $this->countNonTokenQueries();
+
+        $this->createEnrolledStudent(self::MIGUEL, $collegeSection);
+        $this->createEnrolledStudent(self::CARLO, $jhsSection);
+        Student::factory()->count(2)->create();
+        DB::flushQueryLog();
+        $this->app['auth']->forgetGuards();
+        $this->withToken($adminToken)->getJson(self::STUDENTS_URL)->assertOk()->assertJsonCount(5, 'students');
+
+        $this->assertSame($singleRowCount, $this->countNonTokenQueries());
     }
 
     public function test_search_with_sql_metacharacters_is_safe(): void
@@ -284,7 +368,7 @@ class StudentListTest extends TestCase
 
     public function test_list_rejects_invalid_query_params(): void
     {
-        foreach (['search', 'grade_level', 'section'] as $queryKey) {
+        foreach (['search', 'grade_level_id'] as $queryKey) {
             $this->fetchStudentList([$queryKey => ['x']])
                 ->assertUnprocessable()
                 ->assertJsonValidationErrors([$queryKey]);
@@ -293,6 +377,59 @@ class StudentListTest extends TestCase
         $this->fetchStudentList(['search' => Str::repeat('a', 256)])
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['search']);
+
+        $this->fetchStudentList(['grade_level_id' => 999])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['grade_level_id']);
+        $this->fetchStudentList(['grade_level' => 'Grade 10', 'section' => 'Rizal'])->assertOk();
+    }
+
+    /**
+     * @return array{0: Section, 1: Section}
+     */
+    private function createActiveYearSections(): array
+    {
+        $schoolYear = SchoolYear::factory()->active()->create();
+
+        return [
+            Section::factory()->jhs()->create(['school_year_id' => $schoolYear->id]),
+            Section::factory()->college()->create(['school_year_id' => $schoolYear->id]),
+        ];
+    }
+
+    private function createSecondTerm(SchoolYear $schoolYear): Term
+    {
+        return Term::factory()->create([
+            'school_year_id' => $schoolYear->id,
+            'term_number' => 2,
+            'start_date' => $schoolYear->start_date->addDays(200)->toDateString(),
+            'end_date' => $schoolYear->start_date->addDays(300)->toDateString(),
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $studentFields
+     */
+    private function createEnrolledStudent(array $studentFields, Section $section): Student
+    {
+        $student = Student::factory()->create($studentFields);
+        Enrollment::factory()->create(['student_id' => $student->id, 'section_id' => $section->id]);
+
+        return $student;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>|null>
+     */
+    private function fetchCurrentEnrollments(): array
+    {
+        return collect($this->fetchStudentList()->assertOk()->json('students'))->pluck('current_enrollment', 'id')->all();
+    }
+
+    private function countNonTokenQueries(): int
+    {
+        // Sanctum writes the token's last_used_at only on the first request, so token queries are left out of the comparison
+        return collect(DB::getQueryLog())->reject(fn (array $loggedQuery) => str_contains($loggedQuery['query'], 'personal_access_tokens'))->count();
     }
 
     /**

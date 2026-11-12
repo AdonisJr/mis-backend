@@ -6,6 +6,7 @@ use Database\Factories\SectionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Section extends Model
 {
@@ -58,5 +59,18 @@ class Section extends Model
     public function program(): BelongsTo
     {
         return $this->belongsTo(Program::class);
+    }
+
+    /** @return HasMany<Enrollment, $this> */
+    public function enrollments(): HasMany
+    {
+        return $this->hasMany(Enrollment::class);
+    }
+
+    public function countMostSeatsTaken(): int
+    {
+        $seatCounts = $this->enrollments()->enrolled()->toBase()->selectRaw('COUNT(*) AS seats_taken')->groupBy('term_id')->pluck('seats_taken');
+
+        return (int) ($seatCounts->max() ?? 0);
     }
 }

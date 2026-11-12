@@ -2,6 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\StudentController;
+use App\Models\Enrollment;
+use App\Models\SchoolYear;
+use App\Models\Section;
 use App\Models\Student;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -9,7 +13,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
-use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class StudentCrudTest extends TestCase
@@ -31,8 +34,6 @@ class StudentCrudTest extends TestCase
         'last_name' => 'Dela Cruz',
         'birth_date' => '2010-05-14',
         'gender' => 'female',
-        'grade_level' => 'Grade 10',
-        'section' => 'Rizal',
         'address' => 'Purok 3, Barangay Poblacion',
         'contact' => '09181234567',
         'guardian_name' => 'Maria Dela Cruz',
@@ -41,28 +42,26 @@ class StudentCrudTest extends TestCase
     ];
 
     private const STUDENT_KEYS = [
-        'id', 'lrn', 'first_name', 'middle_name', 'last_name', 'birth_date', 'gender', 'grade_level', 'section',
-        'address', 'contact', 'guardian_name', 'guardian_relationship', 'guardian_contact', 'rfid',
+        'id', 'lrn', 'first_name', 'middle_name', 'last_name', 'birth_date', 'gender',
+        'address', 'contact', 'guardian_name', 'guardian_relationship', 'guardian_contact', 'rfid', 'current_enrollment',
         'created_at', 'updated_at',
     ];
 
     private const NULLABLE_COLUMNS = ['middle_name', 'address', 'contact', 'rfid', 'user_id', 'created_at', 'updated_at'];
 
-    /**
-     * @return array<string, array{string}>
-     */
-    public static function provideGradeLevels(): array
-    {
-        return collect(Student::GRADE_LEVELS)->mapWithKeys(fn (string $gradeLevel) => [$gradeLevel => [$gradeLevel]])->all();
-    }
+    private const STUDENT_COLUMNS = [
+        'id', 'lrn', 'first_name', 'middle_name', 'last_name', 'birth_date', 'gender',
+        'address', 'contact', 'guardian_name', 'guardian_relationship', 'guardian_contact', 'rfid', 'user_id',
+        'created_at', 'updated_at',
+    ];
 
     public function test_students_table_has_expected_columns(): void
     {
-        $this->assertTrue(Schema::hasColumns('students', [...self::STUDENT_KEYS, 'user_id']));
+        $this->assertTrue(Schema::hasColumns('students', self::STUDENT_COLUMNS));
         $this->assertSame('date', Schema::getColumnType('students', 'birth_date'));
 
         $nullableByColumn = collect(Schema::getColumns('students'))->pluck('nullable', 'name');
-        $this->assertCount(18, $nullableByColumn);
+        $this->assertCount(16, $nullableByColumn);
 
         foreach ($nullableByColumn as $columnName => $isNullable) {
             $this->assertSame(in_array($columnName, self::NULLABLE_COLUMNS, true), $isNullable, $columnName);
@@ -231,10 +230,10 @@ class StudentCrudTest extends TestCase
         $this->assertDatabaseCount('students', 0);
     }
 
-    public function test_create_requires_birth_gender_level_section_and_guardian(): void
+    public function test_create_requires_birth_gender_and_guardian(): void
     {
         $adminToken = $this->createTokenFor(User::factory()->admin()->create());
-        $requiredFields = ['birth_date', 'gender', 'grade_level', 'section', 'guardian_name', 'guardian_relationship', 'guardian_contact'];
+        $requiredFields = ['birth_date', 'gender', 'guardian_name', 'guardian_relationship', 'guardian_contact'];
 
         foreach ($requiredFields as $requiredField) {
             $this->withToken($adminToken)
@@ -278,7 +277,7 @@ class StudentCrudTest extends TestCase
             ->assertJsonPath('student.birth_date', $yesterday);
     }
 
-    public function test_create_rejects_gender_and_grade_level_outside_their_sets(): void
+    public function test_create_rejects_gender_outside_its_set(): void
     {
         $adminToken = $this->createTokenFor(User::factory()->admin()->create());
 
@@ -289,23 +288,7 @@ class StudentCrudTest extends TestCase
                 ->assertJsonValidationErrors(['gender']);
         }
 
-        foreach (['Grade 6', 'grade 7', '5th Year College'] as $invalidGradeLevel) {
-            $this->withToken($adminToken)
-                ->postJson(self::STUDENTS_URL, [...self::VALID_PAYLOAD, 'grade_level' => $invalidGradeLevel])
-                ->assertUnprocessable()
-                ->assertJsonValidationErrors(['grade_level']);
-        }
-
         $this->assertDatabaseCount('students', 0);
-    }
-
-    #[DataProvider('provideGradeLevels')]
-    public function test_create_accepts_every_grade_level(string $gradeLevel): void
-    {
-        $this->withToken($this->createTokenFor(User::factory()->admin()->create()))
-            ->postJson(self::STUDENTS_URL, [...self::VALID_PAYLOAD, 'grade_level' => $gradeLevel])
-            ->assertCreated()
-            ->assertJsonPath('student.grade_level', $gradeLevel);
     }
 
     public function test_create_rejects_oversized_fields(): void
@@ -318,14 +301,13 @@ class StudentCrudTest extends TestCase
                 ...self::VALID_PAYLOAD,
                 'first_name' => $oversizedText,
                 'last_name' => $oversizedText,
-                'section' => $oversizedText,
                 'address' => $oversizedText,
                 'guardian_name' => $oversizedText,
                 'contact' => $oversizedContact,
                 'guardian_contact' => $oversizedContact,
             ])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['first_name', 'last_name', 'section', 'address', 'guardian_name', 'contact', 'guardian_contact']);
+            ->assertJsonValidationErrors(['first_name', 'last_name', 'address', 'guardian_name', 'contact', 'guardian_contact']);
 
         $this->assertDatabaseCount('students', 0);
     }
@@ -371,15 +353,55 @@ class StudentCrudTest extends TestCase
         $student = Student::factory()->create();
 
         $this->withToken($this->createTokenFor(User::factory()->admin()->create()))
-            ->putJson(self::STUDENTS_URL.'/'.$student->id, [...self::VALID_PAYLOAD, 'section' => 'Bonifacio'])
+            ->putJson(self::STUDENTS_URL.'/'.$student->id, [...self::VALID_PAYLOAD, 'middle_name' => 'Bonifacio'])
             ->assertOk()
             ->assertJsonPath('student.id', $student->id)
             ->assertJsonPath('student.lrn', '136512340001')
-            ->assertJsonPath('student.section', 'Bonifacio');
+            ->assertJsonPath('student.middle_name', 'Bonifacio');
 
         $updatedStudent = $student->fresh();
-        $this->assertSame('Bonifacio', $updatedStudent->section);
+        $this->assertSame('Bonifacio', $updatedStudent->middle_name);
         $this->assertSame('2010-05-14', $updatedStudent->birth_date->toDateString());
+    }
+
+    public function test_create_ignores_grade_level_and_section(): void
+    {
+        $createResponse = $this->withToken($this->createTokenFor(User::factory()->admin()->create()))
+            ->postJson(self::STUDENTS_URL, [...self::VALID_PAYLOAD, 'grade_level' => 'Grade 10', 'section' => 'Rizal'])
+            ->assertCreated()
+            ->assertJsonPath('student.current_enrollment', null);
+
+        $this->assertSame(self::STUDENT_KEYS, array_keys($createResponse->json('student')));
+    }
+
+    public function test_delete_student_with_enrollments_returns_422(): void
+    {
+        $enrollment = Enrollment::factory()->create();
+
+        $this->withToken($this->createTokenFor(User::factory()->admin()->create()))
+            ->deleteJson(self::STUDENTS_URL.'/'.$enrollment->student_id)
+            ->assertUnprocessable()
+            ->assertExactJson(['message' => StudentController::ENROLLMENTS_DELETE_MESSAGE]);
+
+        $this->assertNotNull($enrollment->student->fresh());
+    }
+
+    public function test_update_returns_current_enrollment(): void
+    {
+        $schoolYear = SchoolYear::factory()->active()->create();
+        $section = Section::factory()->jhs()->create(['school_year_id' => $schoolYear->id]);
+        $enrollment = Enrollment::factory()->create(['section_id' => $section->id]);
+
+        $this->withToken($this->createTokenFor(User::factory()->admin()->create()))
+            ->putJson(self::STUDENTS_URL.'/'.$enrollment->student_id, self::VALID_PAYLOAD)
+            ->assertOk()
+            ->assertJsonPath('student.current_enrollment', [
+                'id' => $enrollment->id,
+                'section_id' => $section->id,
+                'term_id' => null,
+                'section' => ['id' => $section->id, 'name' => $section->name],
+                'grade_level' => ['id' => $section->grade_level_id, 'name' => $section->gradeLevel->name, 'stage' => $section->gradeLevel->stage],
+            ]);
     }
 
     public function test_update_allows_own_unchanged_lrn(): void

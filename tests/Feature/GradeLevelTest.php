@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\GradeLevel;
 use App\Models\Program;
 use App\Models\Role;
-use App\Models\Student;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
@@ -50,11 +49,6 @@ class GradeLevelTest extends TestCase
         $this->assertSame(10, GradeLevel::count());
         $this->assertSame(array_keys(self::EXPECTED_GRADE_LEVELS), GradeLevel::orderBy('sort_order')->pluck('name')->all());
         $this->assertSame(range(1, 10), GradeLevel::orderBy('sort_order')->pluck('sort_order')->all());
-    }
-
-    public function test_grade_level_names_match_student_grade_levels(): void
-    {
-        $this->assertSame(Student::GRADE_LEVELS, GradeLevel::orderBy('sort_order')->pluck('name')->all());
     }
 
     public function test_grade_levels_have_expected_stages(): void

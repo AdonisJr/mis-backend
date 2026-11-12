@@ -2,12 +2,13 @@
 
 namespace App\Http\Requests;
 
+use App\Models\GradeLevel;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ListStudentsRequest extends FormRequest
 {
-    private const FILTER_RULES = ['nullable', 'string', 'max:255'];
+    private const SEARCH_RULES = ['nullable', 'string', 'max:255'];
 
     /**
      * Determine if the user is authorized to make this request.
@@ -25,9 +26,8 @@ class ListStudentsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'search' => self::FILTER_RULES,
-            'grade_level' => self::FILTER_RULES,
-            'section' => self::FILTER_RULES,
+            'search' => self::SEARCH_RULES,
+            'grade_level_id' => StoreSectionRequest::buildIdRules('nullable', GradeLevel::class),
         ];
     }
 }

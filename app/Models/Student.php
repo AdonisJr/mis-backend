@@ -5,6 +5,7 @@ namespace App\Models;
 use Database\Factories\StudentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Student extends Model
 {
@@ -12,19 +13,6 @@ class Student extends Model
     use HasFactory;
 
     public const GENDERS = ['male', 'female'];
-
-    public const GRADE_LEVELS = [
-        'Grade 7',
-        'Grade 8',
-        'Grade 9',
-        'Grade 10',
-        'Grade 11',
-        'Grade 12',
-        '1st Year College',
-        '2nd Year College',
-        '3rd Year College',
-        '4th Year College',
-    ];
 
     /**
      * The attributes that are mass assignable.
@@ -38,8 +26,6 @@ class Student extends Model
         'last_name',
         'birth_date',
         'gender',
-        'grade_level',
-        'section',
         'address',
         'contact',
         'guardian_name',
@@ -57,5 +43,17 @@ class Student extends Model
         return [
             'birth_date' => 'date',
         ];
+    }
+
+    /** @return HasMany<Enrollment, $this> */
+    public function enrollments(): HasMany
+    {
+        return $this->hasMany(Enrollment::class);
+    }
+
+    /** @return HasMany<Enrollment, $this> */
+    public function currentEnrollments(): HasMany
+    {
+        return $this->enrollments()->current();
     }
 }

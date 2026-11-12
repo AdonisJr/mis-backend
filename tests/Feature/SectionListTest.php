@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\Enrollment;
 use App\Models\GradeLevel;
 use App\Models\Program;
 use App\Models\SchoolYear;
 use App\Models\Section;
+use App\Models\Term;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -44,7 +46,7 @@ class SectionListTest extends TestCase
 
     private const FIRST_YEAR_COLLEGE = '1st Year College';
 
-    private const SECTION_KEYS = ['id', 'school_year_id', 'grade_level_id', 'program_id', 'name', 'capacity', 'room', 'created_at', 'updated_at', 'grade_level', 'program'];
+    private const SECTION_KEYS = ['id', 'school_year_id', 'grade_level_id', 'program_id', 'name', 'capacity', 'room', 'created_at', 'updated_at', 'grade_level', 'program', 'enrolled_count'];
 
     private SchoolYear $schoolYear;
 
@@ -108,11 +110,13 @@ class SectionListTest extends TestCase
                         ...$this->buildSectionColumns($jhsSection),
                         'grade_level' => ['id' => $jhsSection->grade_level_id, 'name' => self::GRADE_7, 'stage' => GradeLevel::STAGE_JHS],
                         'program' => null,
+                        'enrolled_count' => 0,
                     ],
                     [
                         ...$this->buildSectionColumns($stemSection),
                         'grade_level' => ['id' => $stemSection->grade_level_id, 'name' => self::GRADE_11, 'stage' => GradeLevel::STAGE_SHS],
                         'program' => ['id' => $stemProgram->id, 'code' => 'STEM', 'name' => self::STEM_PROGRAM['name']],
+                        'enrolled_count' => 0,
                     ],
                 ],
                 'meta' => ['current_page' => 1, 'last_page' => 1, 'per_page' => self::PAGE_SIZE, 'total' => 2],
@@ -251,6 +255,31 @@ class SectionListTest extends TestCase
             ->assertJsonPath('sections', []);
     }
 
+    public function test_enrolled_count_counts_enrolled_rows_of_the_term(): void
+    {
+        [$firstTerm, $secondTerm] = $this->createEnrollmentFixtures();
+
+        $firstTermCounts = $this->fetchEnrolledCounts(['term_id' => $firstTerm->id]);
+        $secondTermCounts = $this->fetchEnrolledCounts(['term_id' => $secondTerm->id]);
+
+        $this->assertSame(['Whole-Year' => 1, 'STEM 11-A' => 2], $firstTermCounts);
+        $this->assertSame(['Whole-Year' => 1, 'STEM 11-A' => 1], $secondTermCounts);
+    }
+
+    public function test_enrolled_count_without_term_counts_whole_year(): void
+    {
+        $this->createEnrollmentFixtures();
+
+        $this->assertSame(['Whole-Year' => 1, 'STEM 11-A' => 3], $this->fetchEnrolledCounts([]));
+    }
+
+    public function test_list_rejects_unknown_term_id(): void
+    {
+        foreach ([self::MISSING_ID, 'abc'] as $invalidTermId) {
+            $this->assertRejectedFilter(['term_id' => $invalidTermId], 'term_id');
+        }
+    }
+
     public function test_list_query_count_does_not_grow_with_rows(): void
     {
         $stemProgram = Program::factory()->create(self::STEM_PROGRAM);
@@ -270,6 +299,36 @@ class SectionListTest extends TestCase
         $this->fetchSectionList([])->assertOk()->assertJsonCount(5, 'sections');
 
         $this->assertSame($singleRowCount, $this->countNonTokenQueries());
+    }
+
+    /**
+     * @return array{0: Term, 1: Term}
+     */
+    private function createEnrollmentFixtures(): array
+    {
+        $firstTerm = Term::factory()->create(['school_year_id' => $this->schoolYear->id, 'term_number' => 1, 'start_date' => '2030-06-01', 'end_date' => '2030-10-31']);
+        $secondTerm = Term::factory()->create(['school_year_id' => $this->schoolYear->id, 'term_number' => 2, 'start_date' => '2030-11-15', 'end_date' => '2031-03-31']);
+        $stemProgram = Program::factory()->create(self::STEM_PROGRAM);
+        $stemSection = $this->createSection(self::GRADE_11, ['program_id' => $stemProgram->id, 'name' => 'STEM 11-A']);
+        $jhsSection = $this->createSection(self::GRADE_7, ['name' => 'Whole-Year']);
+
+        Enrollment::factory()->count(2)->create(['section_id' => $stemSection->id, 'term_id' => $firstTerm->id]);
+        Enrollment::factory()->closed(Enrollment::STATUS_DROPPED)->create(['section_id' => $stemSection->id, 'term_id' => $firstTerm->id]);
+        Enrollment::factory()->create(['section_id' => $stemSection->id, 'term_id' => $secondTerm->id]);
+        Enrollment::factory()->create(['section_id' => $jhsSection->id]);
+
+        return [$firstTerm, $secondTerm];
+    }
+
+    /**
+     * @param  array<string, mixed>  $queryParams
+     * @return array<string, int>
+     */
+    private function fetchEnrolledCounts(array $queryParams): array
+    {
+        $listedSections = $this->fetchSectionList($queryParams)->assertOk()->json('sections');
+
+        return array_column($listedSections, 'enrolled_count', 'name');
     }
 
     private function countNonTokenQueries(): int

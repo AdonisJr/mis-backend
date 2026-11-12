@@ -2,7 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\SectionController;
 use App\Http\Requests\StoreSectionRequest;
+use App\Http\Requests\UpdateSectionRequest;
+use App\Models\Enrollment;
 use App\Models\GradeLevel;
 use App\Models\Program;
 use App\Models\SchoolYear;
@@ -45,7 +48,7 @@ class SectionCrudTest extends TestCase
 
     private const FIRST_YEAR_COLLEGE = '1st Year College';
 
-    private const SECTION_KEYS = ['id', 'school_year_id', 'grade_level_id', 'program_id', 'name', 'capacity', 'room', 'created_at', 'updated_at', 'grade_level', 'program'];
+    private const SECTION_KEYS = ['id', 'school_year_id', 'grade_level_id', 'program_id', 'name', 'capacity', 'room', 'created_at', 'updated_at', 'grade_level', 'program', 'enrolled_count'];
 
     private const SECTION_COLUMNS = ['id', 'school_year_id', 'grade_level_id', 'program_id', 'name', 'capacity', 'room', 'created_at', 'updated_at'];
 
@@ -287,7 +290,7 @@ class SectionCrudTest extends TestCase
                 'term_id' => 1,
             ])
             ->assertCreated()
-            ->assertJsonMissingPath('section.enrolled_count');
+            ->assertJsonPath('section.enrolled_count', 0);
 
         $this->assertNotSame(777, $createResponse->json('section.id'));
         $this->assertStringStartsNotWith('2000', $createResponse->json('section.created_at'));
@@ -383,6 +386,80 @@ class SectionCrudTest extends TestCase
 
         $this->assertDatabaseMissing('sections', ['id' => $section->id]);
         $this->assertNotNull($this->schoolYear->fresh());
+    }
+
+    public function test_delete_section_with_enrollments_returns_422(): void
+    {
+        $section = $this->createSection(self::GRADE_7, ['name' => 'A']);
+        Enrollment::factory()->create(['section_id' => $section->id]);
+
+        $this->withToken($this->adminToken)
+            ->deleteJson(self::SECTIONS_URL.'/'.$section->id)
+            ->assertUnprocessable()
+            ->assertExactJson(['message' => SectionController::ENROLLMENTS_DELETE_MESSAGE]);
+
+        $this->assertDatabaseHas('sections', ['id' => $section->id]);
+    }
+
+    public function test_update_section_with_enrollments_rejects_year_grade_level_and_program_change(): void
+    {
+        $stemProgram = Program::factory()->create(self::STEM_PROGRAM);
+        $abmProgram = Program::factory()->create(['code' => 'ABM', 'name' => 'Accountancy', 'stage' => GradeLevel::STAGE_SHS]);
+        $otherYear = SchoolYear::factory()->create(['name' => '2031-2032', 'start_date' => '2031-06-01', 'end_date' => '2032-05-31']);
+        $section = $this->createSection(self::GRADE_11, ['name' => 'STEM 11-A', 'program_id' => $stemProgram->id]);
+        Enrollment::factory()->create(['section_id' => $section->id]);
+        $sectionUrl = self::SECTIONS_URL.'/'.$section->id;
+        $keptFields = ['name' => 'STEM 11-A', 'program_id' => $stemProgram->id];
+
+        $this->withToken($this->adminToken)
+            ->putJson($sectionUrl, [...$this->buildSectionPayload(self::GRADE_11, $keptFields), 'school_year_id' => $otherYear->id])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['school_year_id' => UpdateSectionRequest::ENROLLED_SECTION_LOCKED_MESSAGE]);
+        $this->withToken($this->adminToken)
+            ->putJson($sectionUrl, $this->buildSectionPayload('Grade 12', $keptFields))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['grade_level_id' => UpdateSectionRequest::ENROLLED_SECTION_LOCKED_MESSAGE]);
+        $this->withToken($this->adminToken)
+            ->putJson($sectionUrl, $this->buildSectionPayload(self::GRADE_11, ['name' => 'STEM 11-A', 'program_id' => $abmProgram->id]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['program_id' => UpdateSectionRequest::ENROLLED_SECTION_LOCKED_MESSAGE]);
+
+        $reloadedSection = $section->fresh();
+        $this->assertSame($this->schoolYear->id, $reloadedSection->school_year_id);
+        $this->assertSame($this->findGradeLevelId(self::GRADE_11), $reloadedSection->grade_level_id);
+        $this->assertSame($stemProgram->id, $reloadedSection->program_id);
+    }
+
+    public function test_update_capacity_below_enrolled_count_returns_422_and_equal_passes(): void
+    {
+        $section = $this->createSection(self::GRADE_7, ['name' => 'A']);
+        Enrollment::factory()->count(2)->create(['section_id' => $section->id]);
+        $sectionUrl = self::SECTIONS_URL.'/'.$section->id;
+
+        $this->withToken($this->adminToken)
+            ->putJson($sectionUrl, $this->buildSectionPayload(self::GRADE_7, ['name' => 'A', 'capacity' => 1]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['capacity' => UpdateSectionRequest::CAPACITY_BELOW_ENROLLED_MESSAGE]);
+        $this->assertSame(self::DEFAULT_CAPACITY, $section->fresh()->capacity);
+
+        $this->withToken($this->adminToken)
+            ->putJson($sectionUrl, $this->buildSectionPayload(self::GRADE_7, ['name' => 'A', 'capacity' => 2]))
+            ->assertOk()
+            ->assertJsonPath('section.capacity', 2)
+            ->assertJsonPath('section.enrolled_count', 2);
+    }
+
+    public function test_update_section_with_enrollments_keeps_name_and_room_editable(): void
+    {
+        $section = $this->createSection(self::GRADE_7, ['name' => 'A']);
+        Enrollment::factory()->create(['section_id' => $section->id]);
+
+        $this->withToken($this->adminToken)
+            ->putJson(self::SECTIONS_URL.'/'.$section->id, $this->buildSectionPayload(self::GRADE_7, ['name' => 'B', 'room' => 'Rm 5']))
+            ->assertOk()
+            ->assertJsonPath('section.name', 'B')
+            ->assertJsonPath('section.room', 'Rm 5')
+            ->assertJsonPath('section.enrolled_count', 1);
     }
 
     public function test_delete_missing_id_returns_404(): void

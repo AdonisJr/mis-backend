@@ -38,7 +38,6 @@ class SchoolYearAccessTest extends TestCase
     public static function provideAdminRoutes(): array
     {
         return [
-            'list' => ['GET', self::SCHOOL_YEARS_URL],
             'create' => ['POST', self::SCHOOL_YEARS_URL],
             'update' => ['PUT', self::SCHOOL_YEARS_URL.'/%d'],
             'delete' => ['DELETE', self::SCHOOL_YEARS_URL.'/%d'],
@@ -101,6 +100,31 @@ class SchoolYearAccessTest extends TestCase
 
         $this->withToken($registrarToken)
             ->putJson(self::SET_ACTIVE_URL.self::MISSING_ID)
+            ->assertForbidden()
+            ->assertExactJson(self::FORBIDDEN_BODY);
+    }
+
+    public function test_registrar_lists_school_years(): void
+    {
+        SchoolYear::factory()->create();
+
+        $this->withToken($this->createTokenFor(User::factory()->registrar()->create()))
+            ->getJson(self::SCHOOL_YEARS_URL)
+            ->assertOk()
+            ->assertJsonCount(1, 'school_years');
+    }
+
+    public function test_guest_gets_401_on_school_year_list(): void
+    {
+        $this->getJson(self::SCHOOL_YEARS_URL)
+            ->assertUnauthorized()
+            ->assertExactJson(self::UNAUTHENTICATED_BODY);
+    }
+
+    public function test_user_without_role_gets_403_on_school_year_list(): void
+    {
+        $this->withToken($this->createTokenFor(User::factory()->create()))
+            ->getJson(self::SCHOOL_YEARS_URL)
             ->assertForbidden()
             ->assertExactJson(self::FORBIDDEN_BODY);
     }

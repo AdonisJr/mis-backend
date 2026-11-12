@@ -44,8 +44,6 @@ class StoreStudentRequest extends FormRequest
             'last_name' => self::REQUIRED_TEXT_RULES,
             'birth_date' => self::BIRTH_DATE_RULES,
             'gender' => ['required', Rule::in(Student::GENDERS)],
-            'grade_level' => ['required', Rule::in(Student::GRADE_LEVELS)],
-            'section' => self::REQUIRED_TEXT_RULES,
             'address' => self::OPTIONAL_TEXT_RULES,
             'contact' => self::OPTIONAL_CONTACT_RULES,
             'guardian_name' => self::REQUIRED_TEXT_RULES,
