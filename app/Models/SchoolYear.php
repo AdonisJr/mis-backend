@@ -5,11 +5,22 @@ namespace App\Models;
 use Database\Factories\SchoolYearFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SchoolYear extends Model
 {
     /** @use HasFactory<SchoolYearFactory> */
     use HasFactory;
+
+    public const TERM_TYPE_SEMESTER = 'semester';
+
+    public const TERM_TYPE_TRIMESTER = 'trimester';
+
+    public const TERM_TYPES = [self::TERM_TYPE_SEMESTER, self::TERM_TYPE_TRIMESTER];
+
+    public const TERM_COUNTS = [self::TERM_TYPE_SEMESTER => 2, self::TERM_TYPE_TRIMESTER => 3];
+
+    public const TERM_TYPE_LABELS = [self::TERM_TYPE_SEMESTER => 'Semester', self::TERM_TYPE_TRIMESTER => 'Trimester'];
 
     /**
      * The attributes that are mass assignable.
@@ -21,6 +32,7 @@ class SchoolYear extends Model
         'start_date',
         'end_date',
         'description',
+        'term_type',
     ];
 
     /**
@@ -30,6 +42,7 @@ class SchoolYear extends Model
      */
     protected $attributes = [
         'is_active' => false,
+        'term_type' => self::TERM_TYPE_SEMESTER,
     ];
 
     /**
@@ -44,5 +57,12 @@ class SchoolYear extends Model
             'end_date' => 'date',
             'is_active' => 'boolean',
         ];
+    }
+
+    /** @return HasMany<Term, $this> */
+    public function terms(): HasMany
+    {
+        // chaperone hands each loaded term its parent, so term labels never lazy-load the school year per row
+        return $this->hasMany(Term::class)->chaperone('schoolYear');
     }
 }

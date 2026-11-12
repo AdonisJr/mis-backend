@@ -6,6 +6,7 @@ use App\Http\Controllers\GradeLevelController;
 use App\Http\Controllers\ProgramController;
 use App\Http\Controllers\SchoolYearController;
 use App\Http\Controllers\StudentController;
+use App\Http\Controllers\TermController;
 use App\Models\Role;
 use Illuminate\Support\Facades\Route;
 
@@ -22,6 +23,8 @@ Route::prefix('mis')->group(function () {
         Route::delete('/students/{id}', [StudentController::class, 'deleteStudent'])->whereNumber('id');
         Route::get('/grade-levels', [GradeLevelController::class, 'listGradeLevels']);
         Route::get('/programs', [ProgramController::class, 'listPrograms']);
+        Route::get('/school-years/{id}/terms', [TermController::class, 'listTerms'])->whereNumber('id');
+        Route::get('/terms/get-active', [TermController::class, 'fetchActiveTerm']);
     });
 
     Route::middleware(['auth:sanctum', 'role:'.Role::ADMIN])->group(function () {
@@ -41,5 +44,9 @@ Route::prefix('mis')->group(function () {
         Route::put('/programs/{id}/deactivate', [ProgramController::class, 'deactivateProgram'])->whereNumber('id');
         Route::put('/programs/{id}/reactivate', [ProgramController::class, 'reactivateProgram'])->whereNumber('id');
         Route::delete('/programs/{id}', [ProgramController::class, 'deleteProgram'])->whereNumber('id');
+        Route::put('/terms/set-active/{id}', [TermController::class, 'setActiveTerm'])->whereNumber('id');
+        Route::post('/school-years/{id}/terms', [TermController::class, 'createTerm'])->whereNumber('id');
+        Route::put('/terms/{id}', [TermController::class, 'updateTerm'])->whereNumber('id');
+        Route::delete('/terms/{id}', [TermController::class, 'deleteTerm'])->whereNumber('id');
     });
 });

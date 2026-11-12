@@ -31,6 +31,7 @@ class StoreSchoolYearRequest extends FormRequest
             'name' => ['required', 'string', 'max:255', $this->getUniqueNameRule()],
             'start_date' => ['required', self::DATE_RULE],
             'end_date' => ['required', self::DATE_RULE, 'after:start_date'],
+            'term_type' => ['required', 'string', Rule::in(SchoolYear::TERM_TYPES)],
             'description' => ['nullable', 'string', 'max:1000'],
         ];
     }
