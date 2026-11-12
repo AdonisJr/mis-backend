@@ -15,6 +15,8 @@ class SchoolYearController extends Controller
 {
     public const ACTIVE_DELETE_MESSAGE = 'The active school year cannot be deleted.';
 
+    public const SECTIONS_DELETE_MESSAGE = 'The school year has sections and cannot be deleted.';
+
     private const TRANSACTION_ATTEMPTS = 3;
 
     public function listSchoolYears(): JsonResponse
@@ -48,7 +50,14 @@ class SchoolYearController extends Controller
 
     public function deleteSchoolYear(int $id): Response
     {
-        SchoolYear::findOrFail($id);
+        $schoolYear = SchoolYear::findOrFail($id);
+        // an active year skips this check so the conditional delete below answers with the active-year message first
+        $hasBlockingSections = ! $schoolYear->is_active && $schoolYear->sections()->exists();
+
+        if ($hasBlockingSections) {
+            return response()->json(['message' => self::SECTIONS_DELETE_MESSAGE], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
         $deletedCount = SchoolYear::whereKey($id)->where('is_active', false)->delete();
 
         // the conditional delete is the guard, so a concurrent set-active cannot slip in between check and delete
