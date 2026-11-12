@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\SchoolYear;
+use App\Models\Term;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -20,6 +21,28 @@ class SchoolYearActiveTest extends TestCase
     private const TOKEN_NAME = 'test';
 
     private const MISSING_ID = 999;
+
+    private const TERM_GET_ACTIVE_URL = '/api/mis/terms/get-active';
+
+    private const SEMESTER_YEAR = [
+        'name' => '2030-2031',
+        'start_date' => '2030-06-01',
+        'end_date' => '2031-03-31',
+        'term_type' => SchoolYear::TERM_TYPE_SEMESTER,
+    ];
+
+    private const TRIMESTER_YEAR = [
+        'name' => '2031-2032',
+        'start_date' => '2031-06-01',
+        'end_date' => '2032-05-31',
+        'term_type' => SchoolYear::TERM_TYPE_TRIMESTER,
+    ];
+
+    private const FIRST_SEMESTER = ['term_number' => 1, 'start_date' => '2030-06-01', 'end_date' => '2030-10-31'];
+
+    private const SECOND_SEMESTER = ['term_number' => 2, 'start_date' => '2030-11-01', 'end_date' => '2031-03-31'];
+
+    private const FIRST_TRIMESTER = ['term_number' => 1, 'start_date' => '2031-06-01', 'end_date' => '2031-09-30'];
 
     public function test_set_active_activates_school_year(): void
     {
@@ -91,6 +114,8 @@ class SchoolYearActiveTest extends TestCase
                 'start_date' => '2026-08-01',
                 'end_date' => '2027-05-31',
                 'description' => null,
+                'term_type' => 'semester',
+                'terms_count' => 0,
                 'is_active' => true,
                 'created_at' => $activeSchoolYear->created_at->toJSON(),
                 'updated_at' => $activeSchoolYear->updated_at->toJSON(),
@@ -137,6 +162,72 @@ class SchoolYearActiveTest extends TestCase
             ->assertOk()
             ->assertJsonPath('school_year.id', $secondSchoolYear->id);
         $this->assertFalse($firstSchoolYear->fresh()->is_active);
+    }
+
+    public function test_set_active_of_another_year_clears_active_term(): void
+    {
+        $semesterYear = SchoolYear::factory()->active()->create(self::SEMESTER_YEAR);
+        $this->createTerm($semesterYear, [...self::FIRST_SEMESTER, 'is_active' => true]);
+        $this->createTerm($semesterYear, self::SECOND_SEMESTER);
+        $trimesterYear = SchoolYear::factory()->create(self::TRIMESTER_YEAR);
+        $adminToken = $this->createTokenFor(User::factory()->admin()->create());
+
+        $this->withToken($adminToken)
+            ->putJson(self::SET_ACTIVE_URL.$trimesterYear->id)
+            ->assertOk();
+
+        $this->assertSame(0, Term::where('is_active', true)->count());
+        $this->assertSame(2, Term::count());
+        $this->withToken($adminToken)
+            ->getJson(self::TERM_GET_ACTIVE_URL)
+            ->assertOk()
+            ->assertExactJson(['term' => null]);
+    }
+
+    public function test_set_active_of_same_year_keeps_active_term(): void
+    {
+        $semesterYear = SchoolYear::factory()->active()->create(self::SEMESTER_YEAR);
+        $activeTerm = $this->createTerm($semesterYear, [...self::FIRST_SEMESTER, 'is_active' => true]);
+
+        $this->withToken($this->createTokenFor(User::factory()->admin()->create()))
+            ->putJson(self::SET_ACTIVE_URL.$semesterYear->id)
+            ->assertOk();
+
+        $this->assertTrue($activeTerm->fresh()->is_active);
+    }
+
+    public function test_set_active_missing_id_keeps_active_term(): void
+    {
+        config(['app.debug' => false]);
+        $semesterYear = SchoolYear::factory()->active()->create(self::SEMESTER_YEAR);
+        $activeTerm = $this->createTerm($semesterYear, [...self::FIRST_SEMESTER, 'is_active' => true]);
+
+        $this->withToken($this->createTokenFor(User::factory()->admin()->create()))
+            ->putJson(self::SET_ACTIVE_URL.self::MISSING_ID)
+            ->assertNotFound();
+
+        $this->assertTrue($activeTerm->fresh()->is_active);
+        $this->assertTrue($semesterYear->fresh()->is_active);
+    }
+
+    public function test_set_active_returns_term_type_and_terms_count(): void
+    {
+        $trimesterYear = SchoolYear::factory()->create(self::TRIMESTER_YEAR);
+        $this->createTerm($trimesterYear, self::FIRST_TRIMESTER);
+
+        $this->withToken($this->createTokenFor(User::factory()->admin()->create()))
+            ->putJson(self::SET_ACTIVE_URL.$trimesterYear->id)
+            ->assertOk()
+            ->assertJsonPath('school_year.term_type', 'trimester')
+            ->assertJsonPath('school_year.terms_count', 1);
+    }
+
+    /**
+     * @param  array<string, mixed>  $termAttributes
+     */
+    private function createTerm(SchoolYear $schoolYear, array $termAttributes): Term
+    {
+        return Term::factory()->for($schoolYear)->create($termAttributes);
     }
 
     private function createTokenFor(User $user): string

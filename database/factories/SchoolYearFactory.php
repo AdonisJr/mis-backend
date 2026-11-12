@@ -34,6 +34,7 @@ class SchoolYearFactory extends Factory
             'start_date' => $startYear.self::START_MONTH_DAY,
             'end_date' => $endYear.self::END_MONTH_DAY,
             'description' => null,
+            'term_type' => SchoolYear::TERM_TYPE_SEMESTER,
             'is_active' => false,
         ];
     }
@@ -42,6 +43,13 @@ class SchoolYearFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'is_active' => true,
+        ]);
+    }
+
+    public function trimester(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'term_type' => SchoolYear::TERM_TYPE_TRIMESTER,
         ]);
     }
 }

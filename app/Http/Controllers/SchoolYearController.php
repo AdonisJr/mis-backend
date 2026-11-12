@@ -6,6 +6,7 @@ use App\Http\Requests\StoreSchoolYearRequest;
 use App\Http\Requests\UpdateSchoolYearRequest;
 use App\Http\Resources\SchoolYearResource;
 use App\Models\SchoolYear;
+use App\Models\Term;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
@@ -14,9 +15,11 @@ class SchoolYearController extends Controller
 {
     public const ACTIVE_DELETE_MESSAGE = 'The active school year cannot be deleted.';
 
+    private const TRANSACTION_ATTEMPTS = 3;
+
     public function listSchoolYears(): JsonResponse
     {
-        $schoolYears = SchoolYear::orderByDesc('start_date')->orderByDesc('id')->get();
+        $schoolYears = SchoolYear::withCount('terms')->orderByDesc('start_date')->orderByDesc('id')->get();
 
         return response()->json([
             'school_years' => SchoolYearResource::collection($schoolYears),
@@ -25,7 +28,7 @@ class SchoolYearController extends Controller
 
     public function createSchoolYear(StoreSchoolYearRequest $request): JsonResponse
     {
-        $schoolYear = SchoolYear::create($request->validated());
+        $schoolYear = SchoolYear::create($request->validated())->loadCount('terms');
 
         return response()->json([
             'school_year' => SchoolYearResource::make($schoolYear),
@@ -36,6 +39,7 @@ class SchoolYearController extends Controller
     {
         $schoolYear = SchoolYear::findOrFail($id);
         $schoolYear->update($request->validated());
+        $schoolYear->loadCount('terms');
 
         return response()->json([
             'school_year' => SchoolYearResource::make($schoolYear),
@@ -62,9 +66,11 @@ class SchoolYearController extends Controller
             // unconditional update locks every row, so concurrent set-active calls serialize and cannot leave two active rows
             SchoolYear::query()->update(['is_active' => false]);
             SchoolYear::whereKey($id)->update(['is_active' => true]);
+            // clears only an active term outside the year being activated, so re-activating the same year keeps its term
+            Term::where('is_active', true)->where('school_year_id', '!=', $id)->update(['is_active' => false]);
 
-            return $schoolYear->refresh();
-        });
+            return $schoolYear->refresh()->loadCount('terms');
+        }, self::TRANSACTION_ATTEMPTS);
 
         return response()->json([
             'school_year' => SchoolYearResource::make($activeSchoolYear),
@@ -73,7 +79,7 @@ class SchoolYearController extends Controller
 
     public function fetchActiveSchoolYear(): JsonResponse
     {
-        $activeSchoolYear = SchoolYear::where('is_active', true)->first();
+        $activeSchoolYear = SchoolYear::withCount('terms')->where('is_active', true)->first();
 
         if (! $activeSchoolYear) {
             return response()->json(['school_year' => null]);
