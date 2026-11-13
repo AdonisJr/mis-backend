@@ -3,6 +3,9 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\EnrollmentController;
+use App\Http\Controllers\FeeItemController;
+use App\Http\Controllers\FeeScheduleController;
+use App\Http\Controllers\FeeScheduleCopyController;
 use App\Http\Controllers\GradeLevelController;
 use App\Http\Controllers\ProgramController;
 use App\Http\Controllers\SchoolYearController;
@@ -64,5 +67,17 @@ Route::prefix('mis')->group(function () {
         Route::post('/sections', [SectionController::class, 'createSection']);
         Route::put('/sections/{id}', [SectionController::class, 'updateSection'])->whereNumber('id');
         Route::delete('/sections/{id}', [SectionController::class, 'deleteSection'])->whereNumber('id');
+        Route::get('/fee-items', [FeeItemController::class, 'listFeeItems']);
+        Route::post('/fee-items', [FeeItemController::class, 'createFeeItem']);
+        Route::put('/fee-items/{id}', [FeeItemController::class, 'updateFeeItem'])->whereNumber('id');
+        Route::put('/fee-items/{id}/deactivate', [FeeItemController::class, 'deactivateFeeItem'])->whereNumber('id');
+        Route::put('/fee-items/{id}/reactivate', [FeeItemController::class, 'reactivateFeeItem'])->whereNumber('id');
+        Route::get('/fee-schedules/lookup', [FeeScheduleController::class, 'lookupFeeSchedule']);
+        Route::post('/fee-schedules/copy', [FeeScheduleCopyController::class, 'copyFeeSchedules']);
+        Route::get('/fee-schedules', [FeeScheduleController::class, 'listFeeSchedules']);
+        Route::post('/fee-schedules', [FeeScheduleController::class, 'createFeeSchedule']);
+        Route::get('/fee-schedules/{id}', [FeeScheduleController::class, 'showFeeSchedule'])->whereNumber('id');
+        Route::put('/fee-schedules/{id}', [FeeScheduleController::class, 'updateFeeSchedule'])->whereNumber('id');
+        Route::delete('/fee-schedules/{id}', [FeeScheduleController::class, 'deleteFeeSchedule'])->whereNumber('id');
     });
 });

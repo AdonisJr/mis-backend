@@ -50,4 +50,10 @@ class Program extends Model
     {
         return $this->hasMany(Section::class);
     }
+
+    /** @return HasMany<FeeSchedule, $this> */
+    public function feeSchedules(): HasMany
+    {
+        return $this->hasMany(FeeSchedule::class);
+    }
 }
