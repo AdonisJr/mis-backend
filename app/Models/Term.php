@@ -71,4 +71,14 @@ class Term extends Model
     {
         return self::buildLabel($this->schoolYear->term_type, $this->term_number);
     }
+
+    public function findNextTerm(): ?Term
+    {
+        return $this->schoolYear->terms()->where('term_number', $this->term_number + 1)->first();
+    }
+
+    public function isLastTerm(): bool
+    {
+        return $this->term_number >= SchoolYear::TERM_COUNTS[$this->schoolYear->term_type];
+    }
 }

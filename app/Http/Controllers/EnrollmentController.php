@@ -33,7 +33,7 @@ class EnrollmentController extends Controller
 
     private const SEARCH_COLUMNS = ['students.lrn', 'students.first_name', 'students.middle_name', 'students.last_name'];
 
-    private const RELATIONS = ['student', 'section.gradeLevel', 'section.program', 'term.schoolYear'];
+    public const RELATIONS = ['student', 'section.gradeLevel', 'section.program', 'term.schoolYear'];
 
     private const TRANSACTION_ATTEMPTS = 3;
 

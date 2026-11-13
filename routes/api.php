@@ -7,6 +7,7 @@ use App\Http\Controllers\GradeLevelController;
 use App\Http\Controllers\ProgramController;
 use App\Http\Controllers\SchoolYearController;
 use App\Http\Controllers\SectionController;
+use App\Http\Controllers\SectionRolloverController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\TermController;
 use App\Models\Role;
@@ -29,6 +30,9 @@ Route::prefix('mis')->group(function () {
         Route::get('/school-years/{id}/terms', [TermController::class, 'listTerms'])->whereNumber('id');
         Route::get('/terms/get-active', [TermController::class, 'fetchActiveTerm']);
         Route::get('/sections', [SectionController::class, 'listSections']);
+        Route::get('/sections/{id}/rollover-preview', [SectionRolloverController::class, 'previewRollover'])->whereNumber('id');
+        Route::post('/sections/{id}/rollover', [SectionRolloverController::class, 'rolloverSection'])->whereNumber('id');
+        Route::put('/sections/{id}/complete', [SectionRolloverController::class, 'completeSection'])->whereNumber('id');
         Route::get('/enrollments', [EnrollmentController::class, 'listEnrollments']);
         Route::post('/enrollments', [EnrollmentController::class, 'enrollStudent']);
         Route::put('/enrollments/{id}/move', [EnrollmentController::class, 'moveEnrollment'])->whereNumber('id');

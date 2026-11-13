@@ -62,7 +62,8 @@ class StoreEnrollmentRequest extends FormRequest
             return;
         }
 
-        $termError = $this->findTermError(Section::with('gradeLevel')->findOrFail($this->input('section_id')));
+        $submittedTerm = $this->filled('term_id') ? Term::findOrFail($this->input('term_id')) : null;
+        $termError = self::findTermError(Section::with('gradeLevel')->findOrFail($this->input('section_id')), $submittedTerm);
 
         if ($termError === null) {
             return;
@@ -71,16 +72,15 @@ class StoreEnrollmentRequest extends FormRequest
         $validator->errors()->add('term_id', $termError);
     }
 
-    private function findTermError(Section $section): ?string
+    public static function findTermError(Section $section, ?Term $submittedTerm): ?string
     {
         $isJuniorHigh = $section->gradeLevel->stage === GradeLevel::STAGE_JHS;
-        $hasTerm = $this->filled('term_id');
 
         return match (true) {
-            $isJuniorHigh && $hasTerm => self::TERM_NOT_ALLOWED_MESSAGE,
+            $isJuniorHigh && $submittedTerm !== null => self::TERM_NOT_ALLOWED_MESSAGE,
             $isJuniorHigh => null,
-            ! $hasTerm => self::TERM_REQUIRED_MESSAGE,
-            (int) Term::findOrFail($this->input('term_id'))->school_year_id !== $section->school_year_id => self::TERM_YEAR_MESSAGE,
+            $submittedTerm === null => self::TERM_REQUIRED_MESSAGE,
+            (int) $submittedTerm->school_year_id !== $section->school_year_id => self::TERM_YEAR_MESSAGE,
             default => null,
         };
     }
