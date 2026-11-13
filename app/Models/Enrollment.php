@@ -106,12 +106,14 @@ class Enrollment extends Model
         return self::enrolled()->where('section_id', $this->section_id)->where('term_id', $this->term_id)->count();
     }
 
+    public function scopeInPeriodOf(Builder $query, Enrollment $candidate): void
+    {
+        $query->whereHas('section', fn (Builder $sectionQuery) => $sectionQuery->where('school_year_id', $candidate->section->school_year_id))
+            ->when($candidate->term_id, fn (Builder $periodQuery) => $periodQuery->where(fn (Builder $termQuery) => $termQuery->whereNull('term_id')->orWhere('term_id', $candidate->term_id)));
+    }
+
     public function hasOverlappingEnrollment(): bool
     {
-        return self::enrolled()
-            ->where('student_id', $this->student_id)
-            ->whereHas('section', fn (Builder $sectionQuery) => $sectionQuery->where('school_year_id', $this->section->school_year_id))
-            ->when($this->term_id, fn (Builder $overlapQuery) => $overlapQuery->where(fn (Builder $termQuery) => $termQuery->whereNull('term_id')->orWhere('term_id', $this->term_id)))
-            ->exists();
+        return self::enrolled()->where('student_id', $this->student_id)->inPeriodOf($this)->exists();
     }
 }
