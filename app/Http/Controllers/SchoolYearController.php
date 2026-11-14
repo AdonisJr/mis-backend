@@ -21,6 +21,8 @@ class SchoolYearController extends Controller
 
     public const PAYMENT_PLANS_DELETE_MESSAGE = 'The school year has payment plans and cannot be deleted.';
 
+    public const STUDENT_DISCOUNTS_DELETE_MESSAGE = 'The school year has student discounts and cannot be deleted.';
+
     private const TRANSACTION_ATTEMPTS = 3;
 
     public function listSchoolYears(): JsonResponse
@@ -72,6 +74,12 @@ class SchoolYearController extends Controller
 
         if ($hasBlockingPaymentPlans) {
             return response()->json(['message' => self::PAYMENT_PLANS_DELETE_MESSAGE], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $hasBlockingStudentDiscounts = ! $schoolYear->is_active && $schoolYear->studentDiscounts()->exists();
+
+        if ($hasBlockingStudentDiscounts) {
+            return response()->json(['message' => self::STUDENT_DISCOUNTS_DELETE_MESSAGE], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         $deletedCount = SchoolYear::whereKey($id)->where('is_active', false)->delete();

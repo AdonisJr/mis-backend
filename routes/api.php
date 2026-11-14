@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DiscountTypeController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\FeeItemController;
@@ -14,6 +15,7 @@ use App\Http\Controllers\SchoolYearController;
 use App\Http\Controllers\SectionController;
 use App\Http\Controllers\SectionRolloverController;
 use App\Http\Controllers\StudentController;
+use App\Http\Controllers\StudentDiscountController;
 use App\Http\Controllers\TermController;
 use App\Models\Role;
 use Illuminate\Support\Facades\Route;
@@ -89,5 +91,16 @@ Route::prefix('mis')->group(function () {
         Route::delete('/payment-plans/{id}', [PaymentPlanController::class, 'deletePaymentPlan'])->whereNumber('id');
         Route::put('/payment-plans/{id}/deactivate', [PaymentPlanController::class, 'deactivatePaymentPlan'])->whereNumber('id');
         Route::put('/payment-plans/{id}/reactivate', [PaymentPlanController::class, 'reactivatePaymentPlan'])->whereNumber('id');
+        Route::get('/discount-types', [DiscountTypeController::class, 'listDiscountTypes']);
+        Route::post('/discount-types', [DiscountTypeController::class, 'createDiscountType']);
+        Route::get('/discount-types/{id}', [DiscountTypeController::class, 'showDiscountType'])->whereNumber('id');
+        Route::put('/discount-types/{id}', [DiscountTypeController::class, 'updateDiscountType'])->whereNumber('id');
+        Route::delete('/discount-types/{id}', [DiscountTypeController::class, 'deleteDiscountType'])->whereNumber('id');
+        Route::put('/discount-types/{id}/deactivate', [DiscountTypeController::class, 'deactivateDiscountType'])->whereNumber('id');
+        Route::put('/discount-types/{id}/reactivate', [DiscountTypeController::class, 'reactivateDiscountType'])->whereNumber('id');
+        Route::get('/student-discounts', [StudentDiscountController::class, 'listStudentDiscounts']);
+        Route::post('/student-discounts', [StudentDiscountController::class, 'createStudentDiscount']);
+        Route::put('/student-discounts/{id}', [StudentDiscountController::class, 'updateStudentDiscount'])->whereNumber('id');
+        Route::delete('/student-discounts/{id}', [StudentDiscountController::class, 'deleteStudentDiscount'])->whereNumber('id');
     });
 });

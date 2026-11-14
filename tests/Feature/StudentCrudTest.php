@@ -7,6 +7,7 @@ use App\Models\Enrollment;
 use App\Models\SchoolYear;
 use App\Models\Section;
 use App\Models\Student;
+use App\Models\StudentDiscount;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -384,6 +385,30 @@ class StudentCrudTest extends TestCase
             ->assertExactJson(['message' => StudentController::ENROLLMENTS_DELETE_MESSAGE]);
 
         $this->assertNotNull($enrollment->student->fresh());
+    }
+
+    public function test_delete_student_with_discounts_returns_422(): void
+    {
+        $studentDiscount = StudentDiscount::factory()->create();
+
+        $this->withToken($this->createTokenFor(User::factory()->admin()->create()))
+            ->deleteJson(self::STUDENTS_URL.'/'.$studentDiscount->student_id)
+            ->assertUnprocessable()
+            ->assertExactJson(['message' => StudentController::DISCOUNTS_DELETE_MESSAGE]);
+
+        $this->assertNotNull($studentDiscount->student->fresh());
+        $this->assertNotNull($studentDiscount->fresh());
+    }
+
+    public function test_delete_student_with_enrollments_and_discounts_reports_enrollments(): void
+    {
+        $enrollment = Enrollment::factory()->create();
+        StudentDiscount::factory()->create(['student_id' => $enrollment->student_id]);
+
+        $this->withToken($this->createTokenFor(User::factory()->admin()->create()))
+            ->deleteJson(self::STUDENTS_URL.'/'.$enrollment->student_id)
+            ->assertUnprocessable()
+            ->assertExactJson(['message' => StudentController::ENROLLMENTS_DELETE_MESSAGE]);
     }
 
     public function test_update_returns_current_enrollment(): void

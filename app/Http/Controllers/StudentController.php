@@ -18,6 +18,8 @@ class StudentController extends Controller
 
     public const ENROLLMENTS_DELETE_MESSAGE = 'The student has enrollments and cannot be deleted.';
 
+    public const DISCOUNTS_DELETE_MESSAGE = 'The student has discounts and cannot be deleted.';
+
     private const SEARCH_COLUMNS = ['lrn', 'first_name', 'middle_name', 'last_name'];
 
     private const CURRENT_ENROLLMENT_RELATIONS = ['currentEnrollments.section.gradeLevel'];
@@ -61,6 +63,10 @@ class StudentController extends Controller
 
         if ($student->enrollments()->exists()) {
             return response()->json(['message' => self::ENROLLMENTS_DELETE_MESSAGE], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        if ($student->discounts()->exists()) {
+            return response()->json(['message' => self::DISCOUNTS_DELETE_MESSAGE], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         $student->delete();

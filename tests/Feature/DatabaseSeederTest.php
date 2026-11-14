@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\DiscountType;
 use App\Models\GradeLevel;
 use App\Models\Program;
 use App\Models\Role;
@@ -23,6 +24,17 @@ class DatabaseSeederTest extends TestCase
     private const PROGRAMS_URL = '/api/mis/programs';
 
     private const TOKEN_NAME = 'test';
+
+    private const DEMO_VALUE_NOTE = 'Placeholder value for demo data. Set the real amount before use.';
+
+    private const EXPECTED_DEMO_DISCOUNT_TYPES = [
+        'ESC grantee' => ['source' => 'government', 'value_type' => 'fixed', 'value' => '9000.00', 'base' => 'tuition', 'stages' => ['jhs']],
+        'SHS voucher – full' => ['source' => 'government', 'value_type' => 'fixed', 'value' => '22500.00', 'base' => 'tuition', 'stages' => ['shs']],
+        'SHS voucher – partial' => ['source' => 'government', 'value_type' => 'fixed', 'value' => '17500.00', 'base' => 'tuition', 'stages' => ['shs']],
+        'Sibling discount' => ['source' => 'school', 'value_type' => 'percent', 'value' => '10.00', 'base' => 'tuition', 'stages' => ['jhs', 'shs']],
+        'Academic scholarship' => ['source' => 'school', 'value_type' => 'percent', 'value' => '50.00', 'base' => 'tuition', 'stages' => ['jhs', 'shs']],
+        'Employee dependent' => ['source' => 'school', 'value_type' => 'percent', 'value' => '25.00', 'base' => 'total', 'stages' => ['jhs', 'shs']],
+    ];
 
     private const EXPECTED_DEMO_PROGRAMS = [
         'STEM' => ['name' => 'Science, Technology, Engineering and Mathematics', 'stage' => GradeLevel::STAGE_SHS],
@@ -88,6 +100,43 @@ class DatabaseSeederTest extends TestCase
 
         $this->assertSame(0, User::count());
         $this->assertSame(0, Program::count());
+        $this->assertSame(0, DiscountType::count());
+    }
+
+    public function test_seeder_creates_demo_discount_types(): void
+    {
+        $this->seed();
+
+        $this->assertSame(6, DiscountType::count());
+
+        foreach (self::EXPECTED_DEMO_DISCOUNT_TYPES as $typeName => $expectedType) {
+            $seededType = DiscountType::where('name', $typeName)->firstOrFail();
+            $this->assertSame($expectedType['source'], $seededType->source);
+            $this->assertSame($expectedType['value_type'], $seededType->value_type);
+            $this->assertSame($expectedType['value'], $seededType->value);
+            $this->assertSame($expectedType['base'], $seededType->base);
+            $this->assertSame($expectedType['stages'], $seededType->stages);
+            $this->assertSame(self::DEMO_VALUE_NOTE, $seededType->description);
+            $this->assertTrue($seededType->is_active);
+        }
+
+        $this->assertFalse(DiscountType::pluck('name')->contains(fn (string $typeName) => str_contains(strtolower($typeName), 'full payment')));
+    }
+
+    public function test_reseeding_creates_no_duplicate_discount_types_and_keeps_edits(): void
+    {
+        $this->seed();
+        $siblingType = DiscountType::where('name', 'Sibling discount')->firstOrFail();
+        $siblingType->update(['value' => '15.00', 'description' => 'Edited']);
+        $siblingType->forceFill(['is_active' => false])->save();
+
+        $this->seed();
+
+        $reseededType = DiscountType::where('name', 'Sibling discount')->firstOrFail();
+        $this->assertSame('15.00', $reseededType->value);
+        $this->assertSame('Edited', $reseededType->description);
+        $this->assertFalse($reseededType->is_active);
+        $this->assertSame(6, DiscountType::count());
     }
 
     public function test_seeder_creates_demo_programs(): void

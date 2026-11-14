@@ -56,4 +56,10 @@ class Student extends Model
     {
         return $this->enrollments()->current();
     }
+
+    /** @return HasMany<StudentDiscount, $this> */
+    public function discounts(): HasMany
+    {
+        return $this->hasMany(StudentDiscount::class);
+    }
 }

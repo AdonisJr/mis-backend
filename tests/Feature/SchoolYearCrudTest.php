@@ -9,6 +9,7 @@ use App\Models\FeeSchedule;
 use App\Models\PaymentPlan;
 use App\Models\SchoolYear;
 use App\Models\Section;
+use App\Models\StudentDiscount;
 use App\Models\Term;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -752,6 +753,33 @@ class SchoolYearCrudTest extends TestCase
     {
         $schoolYear = SchoolYear::factory()->active()->create(self::SEMESTER_YEAR);
         PaymentPlan::factory()->create(['school_year_id' => $schoolYear->id]);
+
+        $this->withToken($this->createTokenFor(User::factory()->admin()->create()))
+            ->deleteJson(self::SCHOOL_YEARS_URL.'/'.$schoolYear->id)
+            ->assertUnprocessable()
+            ->assertExactJson(['message' => SchoolYearController::ACTIVE_DELETE_MESSAGE]);
+
+        $this->assertTrue($schoolYear->fresh()->is_active);
+    }
+
+    public function test_delete_school_year_with_student_discounts_returns_422(): void
+    {
+        $schoolYear = SchoolYear::factory()->create(self::SEMESTER_YEAR);
+        $studentDiscount = StudentDiscount::factory()->create(['school_year_id' => $schoolYear->id]);
+
+        $this->withToken($this->createTokenFor(User::factory()->admin()->create()))
+            ->deleteJson(self::SCHOOL_YEARS_URL.'/'.$schoolYear->id)
+            ->assertUnprocessable()
+            ->assertExactJson(['message' => SchoolYearController::STUDENT_DISCOUNTS_DELETE_MESSAGE]);
+
+        $this->assertNotNull($schoolYear->fresh());
+        $this->assertNotNull($studentDiscount->fresh());
+    }
+
+    public function test_delete_active_school_year_with_student_discounts_reports_active_year(): void
+    {
+        $schoolYear = SchoolYear::factory()->active()->create(self::SEMESTER_YEAR);
+        StudentDiscount::factory()->create(['school_year_id' => $schoolYear->id]);
 
         $this->withToken($this->createTokenFor(User::factory()->admin()->create()))
             ->deleteJson(self::SCHOOL_YEARS_URL.'/'.$schoolYear->id)
