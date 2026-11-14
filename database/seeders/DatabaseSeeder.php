@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\DiscountType;
 use App\Models\GradeLevel;
 use App\Models\Program;
 use App\Models\Role;
@@ -27,6 +28,17 @@ class DatabaseSeeder extends Seeder
         'BSBA' => ['name' => 'Bachelor of Science in Business Administration', 'stage' => GradeLevel::STAGE_COLLEGE],
     ];
 
+    private const DEMO_VALUE_NOTE = 'Placeholder value for demo data. Set the real amount before use.';
+
+    private const DEMO_DISCOUNT_TYPES = [
+        'ESC grantee' => ['source' => DiscountType::SOURCE_GOVERNMENT, 'value_type' => DiscountType::VALUE_TYPE_FIXED, 'value' => '9000.00', 'base' => DiscountType::BASE_TUITION, 'stages' => [GradeLevel::STAGE_JHS]],
+        'SHS voucher – full' => ['source' => DiscountType::SOURCE_GOVERNMENT, 'value_type' => DiscountType::VALUE_TYPE_FIXED, 'value' => '22500.00', 'base' => DiscountType::BASE_TUITION, 'stages' => [GradeLevel::STAGE_SHS]],
+        'SHS voucher – partial' => ['source' => DiscountType::SOURCE_GOVERNMENT, 'value_type' => DiscountType::VALUE_TYPE_FIXED, 'value' => '17500.00', 'base' => DiscountType::BASE_TUITION, 'stages' => [GradeLevel::STAGE_SHS]],
+        'Sibling discount' => ['source' => DiscountType::SOURCE_SCHOOL, 'value_type' => DiscountType::VALUE_TYPE_PERCENT, 'value' => '10.00', 'base' => DiscountType::BASE_TUITION, 'stages' => DiscountType::STAGES],
+        'Academic scholarship' => ['source' => DiscountType::SOURCE_SCHOOL, 'value_type' => DiscountType::VALUE_TYPE_PERCENT, 'value' => '50.00', 'base' => DiscountType::BASE_TUITION, 'stages' => DiscountType::STAGES],
+        'Employee dependent' => ['source' => DiscountType::SOURCE_SCHOOL, 'value_type' => DiscountType::VALUE_TYPE_PERCENT, 'value' => '25.00', 'base' => DiscountType::BASE_TOTAL, 'stages' => DiscountType::STAGES],
+    ];
+
     /**
      * Seed the application's database.
      */
@@ -35,6 +47,7 @@ class DatabaseSeeder extends Seeder
         $this->seedRoles();
         $this->seedAdmin();
         $this->seedPrograms();
+        $this->seedDiscountTypes();
     }
 
     private function seedRoles(): void
@@ -66,6 +79,14 @@ class DatabaseSeeder extends Seeder
         // keyed on code and never overwriting, so re-seeding neither duplicates a program nor reverts an admin's edits
         foreach (self::DEMO_PROGRAMS as $programCode => $programAttributes) {
             Program::firstOrCreate(['code' => $programCode], $programAttributes);
+        }
+    }
+
+    private function seedDiscountTypes(): void
+    {
+        // keyed on name and never overwriting, so re-seeding neither duplicates a type nor reverts an admin's edits
+        foreach (self::DEMO_DISCOUNT_TYPES as $typeName => $typeAttributes) {
+            DiscountType::firstOrCreate(['name' => $typeName], [...$typeAttributes, 'description' => self::DEMO_VALUE_NOTE]);
         }
     }
 }
