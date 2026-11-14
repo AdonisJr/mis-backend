@@ -6,6 +6,7 @@ use App\Http\Controllers\SchoolYearController;
 use App\Http\Requests\UpdateSchoolYearRequest;
 use App\Models\Enrollment;
 use App\Models\FeeSchedule;
+use App\Models\PaymentPlan;
 use App\Models\SchoolYear;
 use App\Models\Section;
 use App\Models\Term;
@@ -731,5 +732,85 @@ class SchoolYearCrudTest extends TestCase
     private function createTokenFor(User $user): string
     {
         return $user->createToken(self::TOKEN_NAME)->plainTextToken;
+    }
+
+    public function test_delete_school_year_with_payment_plans_returns_422(): void
+    {
+        $schoolYear = SchoolYear::factory()->create(self::SEMESTER_YEAR);
+        $paymentPlan = PaymentPlan::factory()->create(['school_year_id' => $schoolYear->id]);
+
+        $this->withToken($this->createTokenFor(User::factory()->admin()->create()))
+            ->deleteJson(self::SCHOOL_YEARS_URL.'/'.$schoolYear->id)
+            ->assertUnprocessable()
+            ->assertExactJson(['message' => SchoolYearController::PAYMENT_PLANS_DELETE_MESSAGE]);
+
+        $this->assertNotNull($schoolYear->fresh());
+        $this->assertNotNull($paymentPlan->fresh());
+    }
+
+    public function test_delete_active_school_year_with_payment_plans_reports_active_year(): void
+    {
+        $schoolYear = SchoolYear::factory()->active()->create(self::SEMESTER_YEAR);
+        PaymentPlan::factory()->create(['school_year_id' => $schoolYear->id]);
+
+        $this->withToken($this->createTokenFor(User::factory()->admin()->create()))
+            ->deleteJson(self::SCHOOL_YEARS_URL.'/'.$schoolYear->id)
+            ->assertUnprocessable()
+            ->assertExactJson(['message' => SchoolYearController::ACTIVE_DELETE_MESSAGE]);
+
+        $this->assertTrue($schoolYear->fresh()->is_active);
+    }
+
+    public function test_update_rejects_start_after_earliest_plan_due_date(): void
+    {
+        $schoolYear = SchoolYear::factory()->create(self::SEMESTER_YEAR);
+        PaymentPlan::factory()->withInstallments()->create(['school_year_id' => $schoolYear->id]);
+
+        $this->withToken($this->createTokenFor(User::factory()->admin()->create()))
+            ->putJson(self::SCHOOL_YEARS_URL.'/'.$schoolYear->id, [...self::SEMESTER_YEAR, 'start_date' => '2030-07-02'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['start_date' => UpdateSchoolYearRequest::START_AFTER_PLAN_DUE_DATES_MESSAGE])
+            ->assertJsonMissingValidationErrors(['end_date']);
+
+        $this->assertSame('2030-06-01', $schoolYear->fresh()->start_date->toDateString());
+    }
+
+    public function test_update_rejects_end_before_latest_plan_due_date(): void
+    {
+        $schoolYear = SchoolYear::factory()->create(self::SEMESTER_YEAR);
+        PaymentPlan::factory()->withInstallments()->create(['school_year_id' => $schoolYear->id]);
+
+        $this->withToken($this->createTokenFor(User::factory()->admin()->create()))
+            ->putJson(self::SCHOOL_YEARS_URL.'/'.$schoolYear->id, [...self::SEMESTER_YEAR, 'end_date' => '2030-07-31'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['end_date' => UpdateSchoolYearRequest::END_BEFORE_PLAN_DUE_DATES_MESSAGE])
+            ->assertJsonMissingValidationErrors(['start_date']);
+
+        $this->assertSame('2031-03-31', $schoolYear->fresh()->end_date->toDateString());
+    }
+
+    public function test_update_allows_dates_on_plan_due_date_bounds(): void
+    {
+        $schoolYear = SchoolYear::factory()->create(self::SEMESTER_YEAR);
+        PaymentPlan::factory()->withInstallments()->create(['school_year_id' => $schoolYear->id]);
+
+        $this->withToken($this->createTokenFor(User::factory()->admin()->create()))
+            ->putJson(self::SCHOOL_YEARS_URL.'/'.$schoolYear->id, [...self::SEMESTER_YEAR, 'start_date' => '2030-07-01', 'end_date' => '2030-08-01'])
+            ->assertOk()
+            ->assertJsonPath('school_year.start_date', '2030-07-01')
+            ->assertJsonPath('school_year.end_date', '2030-08-01');
+    }
+
+    public function test_update_date_guard_covers_inactive_plans(): void
+    {
+        $schoolYear = SchoolYear::factory()->create(self::SEMESTER_YEAR);
+        PaymentPlan::factory()->withInstallments()->inactive()->create(['school_year_id' => $schoolYear->id]);
+
+        $this->withToken($this->createTokenFor(User::factory()->admin()->create()))
+            ->putJson(self::SCHOOL_YEARS_URL.'/'.$schoolYear->id, [...self::SEMESTER_YEAR, 'start_date' => '2030-07-02'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['start_date' => UpdateSchoolYearRequest::START_AFTER_PLAN_DUE_DATES_MESSAGE]);
+
+        $this->assertSame('2030-06-01', $schoolYear->fresh()->start_date->toDateString());
     }
 }

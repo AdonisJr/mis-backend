@@ -77,4 +77,16 @@ class SchoolYear extends Model
     {
         return $this->hasMany(FeeSchedule::class);
     }
+
+    /** @return HasMany<PaymentPlan, $this> */
+    public function paymentPlans(): HasMany
+    {
+        return $this->hasMany(PaymentPlan::class);
+    }
+
+    public function containsDate(string $date): bool
+    {
+        // Y-m-d strings compare correctly, and both bounds are inclusive
+        return $date >= $this->start_date->toDateString() && $date <= $this->end_date->toDateString();
+    }
 }
