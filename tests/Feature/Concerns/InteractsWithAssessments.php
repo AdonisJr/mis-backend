@@ -31,6 +31,10 @@ trait InteractsWithAssessments
 
     private const ASSESSMENT_NULL_KEYS = ['id', 'status', 'created_at', 'superseded_at', 'superseded_by'];
 
+    private const ASSESSMENT_PAYMENT_KEYS = ['total_paid', 'balance', 'has_payments'];
+
+    private const STORED_ASSESSMENT_KEYS = [...self::ASSESSMENT_KEYS, ...self::ASSESSMENT_PAYMENT_KEYS];
+
     private const ASSESSMENT_ROW_KEYS = ['id', 'status', 'payment_plan_id', 'plan_name', 'net_total', 'student', 'grade_level', 'program', 'created_by', 'created_at', 'superseded_at', 'superseded_by', 'school_year_id'];
 
     private const CANDIDATE_KEYS = ['id', 'lrn', 'first_name', 'middle_name', 'last_name', 'grade_level', 'program'];

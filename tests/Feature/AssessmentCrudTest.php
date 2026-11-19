@@ -10,6 +10,7 @@ use App\Models\AssessmentInstallment;
 use App\Models\FeeItem;
 use App\Models\FeeScheduleLine;
 use App\Models\GradeLevel;
+use App\Models\Payment;
 use App\Models\PaymentPlan;
 use App\Models\SchoolYear;
 use App\Models\User;
@@ -17,6 +18,7 @@ use App\Support\AssessmentCalculator;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use RuntimeException;
@@ -107,7 +109,7 @@ class AssessmentCrudTest extends TestCase
         $preview = $this->postPreview($payload)->assertOk()->json('assessment');
         $created = $this->postAssessment($payload)->assertCreated()->json('assessment');
 
-        $this->assertSame(Arr::except($created, self::ASSESSMENT_NULL_KEYS), Arr::except($preview, self::ASSESSMENT_NULL_KEYS));
+        $this->assertSame(Arr::except($created, [...self::ASSESSMENT_NULL_KEYS, ...self::ASSESSMENT_PAYMENT_KEYS]), Arr::except($preview, self::ASSESSMENT_NULL_KEYS));
         $this->assertNotNull($created['id']);
         $this->assertSame(Assessment::STATUS_CURRENT, $created['status']);
     }
@@ -133,7 +135,7 @@ class AssessmentCrudTest extends TestCase
             ->assertJsonPath('assessment.superseded_at', null)
             ->assertJsonPath('assessment.superseded_by', null);
 
-        $this->assertSame(self::ASSESSMENT_KEYS, array_keys($response->json('assessment')));
+        $this->assertSame(self::STORED_ASSESSMENT_KEYS, array_keys($response->json('assessment')));
         $this->assertDatabaseCount('assessments', 1);
         $this->assertDatabaseCount('assessment_fee_lines', 2);
         $this->assertDatabaseCount('assessment_discounts', 1);
@@ -148,7 +150,7 @@ class AssessmentCrudTest extends TestCase
         $assessment = $this->assessStudent($this->createEnrolledStudent(GradeLevel::STAGE_JHS), $this->createCashPlan());
 
         $this->assertSame(['id' => $admin->id, 'name' => $admin->name], $assessment['created_by']);
-        $this->assertStringStartsWith(self::ASSESSED_ON, $assessment['created_at']);
+        $this->assertSame(self::ASSESSED_ON, Carbon::parse($assessment['created_at'])->timezone(config('app.timezone'))->toDateString());
         $this->assertSame($admin->id, Assessment::first()->created_by);
     }
 
@@ -178,7 +180,7 @@ class AssessmentCrudTest extends TestCase
 
         $showResponse = $this->withToken($this->adminToken)->getJson(self::ASSESSMENTS_URL.'/'.$created['id'])->assertOk();
 
-        $this->assertSame(self::ASSESSMENT_KEYS, array_keys($showResponse->json('assessment')));
+        $this->assertSame(self::STORED_ASSESSMENT_KEYS, array_keys($showResponse->json('assessment')));
         $this->assertSame($created, $showResponse->json('assessment'));
     }
 
@@ -230,6 +232,34 @@ class AssessmentCrudTest extends TestCase
         $this->postReassess($first['id'], $paymentPlan)->assertUnprocessable()->assertExactJson(['message' => AssessmentController::SUPERSEDED_MESSAGE]);
 
         $this->assertEquals($snapshot, $this->snapshotAssessmentTables());
+    }
+
+    public function test_reassess_blocked_while_payments_exist(): void
+    {
+        $this->createJhsSchedule([[$this->createFeeItem(self::TUITION_FEE, FeeItem::CATEGORY_TUITION), '5000.00']]);
+        $paymentPlan = $this->createCashPlan();
+        $first = $this->assessStudent($this->createEnrolledStudent(GradeLevel::STAGE_JHS), $paymentPlan);
+        Payment::factory()->create(['assessment_id' => $first['id']]);
+        $snapshot = $this->snapshotAssessmentTables();
+
+        $this->postReassess($first['id'], $paymentPlan)
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.reassess.0', Assessment::HAS_PAYMENTS_MESSAGE);
+
+        $this->assertEquals($snapshot, $this->snapshotAssessmentTables());
+        $this->assertSame(Assessment::STATUS_CURRENT, Assessment::find($first['id'])->status);
+    }
+
+    public function test_reassess_allowed_after_payments_are_voided(): void
+    {
+        $this->createJhsSchedule([[$this->createFeeItem(self::TUITION_FEE, FeeItem::CATEGORY_TUITION), '5000.00']]);
+        $paymentPlan = $this->createCashPlan();
+        $first = $this->assessStudent($this->createEnrolledStudent(GradeLevel::STAGE_JHS), $paymentPlan);
+        Payment::factory()->voided()->create(['assessment_id' => $first['id']]);
+
+        $this->postReassess($first['id'], $paymentPlan)->assertCreated();
+
+        $this->assertSame(Assessment::STATUS_SUPERSEDED, Assessment::find($first['id'])->status);
     }
 
     public function test_reassess_missing_id_returns_404(): void

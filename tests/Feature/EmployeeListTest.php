@@ -205,6 +205,15 @@ class EmployeeListTest extends TestCase
         );
     }
 
+    public function test_filter_by_cashier_role(): void
+    {
+        $adminToken = $this->createTokenFor($this->createActingAdmin());
+        $this->createFixtureEmployees();
+        $cashierUser = User::factory()->cashier()->create(['name' => 'Carla Cashier', 'email' => 'carla@school.test']);
+
+        $this->assertSame([$cashierUser->email], $this->fetchListedEmails($adminToken, ['role' => Role::CASHIER]));
+    }
+
     public function test_filter_by_status(): void
     {
         $adminToken = $this->createTokenFor($this->createActingAdmin());

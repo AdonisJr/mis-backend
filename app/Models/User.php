@@ -65,4 +65,9 @@ class User extends Authenticatable
     {
         return $this->roles()->whereIn('name', $roleNames)->exists();
     }
+
+    public function hasRole(string $roleName): bool
+    {
+        return $this->roles->contains('name', $roleName);
+    }
 }

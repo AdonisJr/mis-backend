@@ -62,6 +62,18 @@ class AuthLoginTest extends TestCase
         $this->assertSame(0, PersonalAccessToken::count());
     }
 
+    public function test_cashier_with_wrong_password_gets_422(): void
+    {
+        $cashierUser = User::factory()->cashier()->create(['password' => self::PASSWORD]);
+
+        $this->postJson(self::LOGIN_URL, ['email' => $cashierUser->email, 'password' => self::WRONG_PASSWORD])
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.email.0', __('auth.failed'));
+        $this->postJson(self::LOGIN_URL, ['email' => $cashierUser->email, 'password' => self::PASSWORD])
+            ->assertOk()
+            ->assertJsonPath('user.roles', [Role::CASHIER]);
+    }
+
     public function test_unknown_email_and_wrong_password_return_identical_422(): void
     {
         $adminUser = User::factory()->admin()->create(['password' => self::PASSWORD]);

@@ -17,6 +17,12 @@ class DatabaseSeeder extends Seeder
 
     private const ADMIN_NAME = 'Admin';
 
+    private const CASHIER_NAME = 'Cashier';
+
+    private const DEMO_CASHIER_EMAIL = 'cashier@example.com';
+
+    private const DEMO_CASHIER_PASSWORD = 'cashier123';
+
     private const DEMO_PROGRAMS = [
         'STEM' => ['name' => 'Science, Technology, Engineering and Mathematics', 'stage' => GradeLevel::STAGE_SHS],
         'ABM' => ['name' => 'Accountancy, Business and Management', 'stage' => GradeLevel::STAGE_SHS],
@@ -46,6 +52,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->seedRoles();
         $this->seedAdmin();
+        $this->seedCashier();
         $this->seedPrograms();
         $this->seedDiscountTypes();
     }
@@ -72,6 +79,17 @@ class DatabaseSeeder extends Seeder
         );
 
         $adminUser->roles()->syncWithoutDetaching([Role::where('name', Role::ADMIN)->value('id')]);
+    }
+
+    private function seedCashier(): void
+    {
+        // firstOrCreate, unlike the admin: re-seeding must never reset a changed demo password back to the known one
+        $cashierUser = User::firstOrCreate(
+            ['email' => self::DEMO_CASHIER_EMAIL],
+            ['name' => self::CASHIER_NAME, 'password' => self::DEMO_CASHIER_PASSWORD],
+        );
+
+        $cashierUser->roles()->syncWithoutDetaching([Role::where('name', Role::CASHIER)->value('id')]);
     }
 
     private function seedPrograms(): void

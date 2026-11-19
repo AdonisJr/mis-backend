@@ -48,6 +48,17 @@ class AuthCurrentUserTest extends TestCase
             ->assertJsonPath('user.roles', [Role::REGISTRAR]);
     }
 
+    public function test_cashier_gets_current_user_with_roles(): void
+    {
+        $cashierUser = User::factory()->cashier()->create();
+
+        $this->withToken($cashierUser->createToken(self::TOKEN_NAME)->plainTextToken)
+            ->getJson(self::CURRENT_USER_URL)
+            ->assertOk()
+            ->assertJsonPath('user.id', $cashierUser->id)
+            ->assertJsonPath('user.roles', [Role::CASHIER]);
+    }
+
     public function test_user_with_both_roles_passes(): void
     {
         $staffUser = User::factory()->registrar()->admin()->create();

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Support\PaymentAllocation;
+use Brick\Math\BigDecimal;
 use Database\Factories\AssessmentFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -24,9 +26,13 @@ class Assessment extends Model
 
     public const TRANSACTION_ATTEMPTS = 3;
 
-    public const DETAIL_RELATIONS = ['student', 'schoolYear', 'gradeLevel', 'program', 'creator', 'superseder', 'feeLines', 'discounts', 'installments'];
+    public const DETAIL_RELATIONS = ['student', 'schoolYear', 'gradeLevel', 'program', 'creator', 'superseder', 'feeLines', 'discounts', 'installments', 'payments'];
 
     public const LIST_RELATIONS = ['student', 'gradeLevel', 'program', 'creator', 'superseder'];
+
+    public const LEDGER_RELATIONS = ['student', 'schoolYear', 'gradeLevel', 'program', 'installments', 'payments.student', 'payments.recorder', 'payments.voider'];
+
+    public const HAS_PAYMENTS_MESSAGE = 'The assessment has payments. Void them before re-assessing.';
 
     /**
      * The attributes that are mass assignable.
@@ -126,6 +132,28 @@ class Assessment extends Model
     public function installments(): HasMany
     {
         return $this->hasMany(AssessmentInstallment::class)->orderBy('sequence');
+    }
+
+    /** @return HasMany<Payment, $this> */
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class)->orderByDesc('id');
+    }
+
+    /** Fresh query, so it stays correct under the student-row lock regardless of loaded relations. */
+    public function hasValidPayments(): bool
+    {
+        return $this->payments()->valid()->exists();
+    }
+
+    public function calculateTotalPaid(): BigDecimal
+    {
+        return PaymentAllocation::sumValidAmounts($this->payments);
+    }
+
+    public function calculateBalance(): BigDecimal
+    {
+        return BigDecimal::of($this->net_total)->minus($this->calculateTotalPaid());
     }
 
     /** @param Builder<Assessment> $query */

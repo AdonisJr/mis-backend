@@ -133,6 +133,10 @@ class AssessmentController extends Controller
             return null;
         }
 
+        if ($currentAssessment->hasValidPayments()) {
+            throw ValidationException::withMessages(['reassess' => Assessment::HAS_PAYMENTS_MESSAGE]);
+        }
+
         $candidate = $currentAssessment->buildReassessCandidate((int) $request->validated('payment_plan_id'));
         $candidate->forceFill(['created_by' => $request->user()->id]);
         $candidate->lockPaymentPlan();
