@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\PaymentPlanController;
 use App\Http\Requests\UpdatePaymentPlanRequest;
+use App\Models\Assessment;
 use App\Models\PaymentPlan;
 use App\Models\PaymentPlanInstallment;
 use App\Models\SchoolYear;
@@ -322,6 +324,32 @@ class PaymentPlanCrudTest extends TestCase
         $this->assertNull($paymentPlan->fresh());
         $this->assertDatabaseCount('payment_plan_installments', 1);
         $this->assertNotNull($otherPlan->fresh());
+    }
+
+    public function test_delete_plan_used_by_current_assessment_returns_422(): void
+    {
+        $paymentPlan = $this->createMonthlyPlan();
+        Assessment::factory()->create(['school_year_id' => $this->schoolYear->id, 'payment_plan_id' => $paymentPlan->id]);
+
+        $this->withToken($this->adminToken)
+            ->deleteJson(self::PAYMENT_PLANS_URL.'/'.$paymentPlan->id)
+            ->assertUnprocessable()
+            ->assertExactJson(['message' => PaymentPlanController::ASSESSMENTS_DELETE_MESSAGE]);
+
+        $this->assertNotNull($paymentPlan->fresh());
+        $this->assertDatabaseCount('payment_plan_installments', 2);
+    }
+
+    public function test_delete_plan_used_only_by_superseded_assessment_nulls_reference(): void
+    {
+        $paymentPlan = $this->createMonthlyPlan();
+        $assessment = Assessment::factory()->superseded()->create(['school_year_id' => $this->schoolYear->id, 'payment_plan_id' => $paymentPlan->id, 'plan_name' => self::MONTHLY_PLAN]);
+
+        $this->withToken($this->adminToken)->deleteJson(self::PAYMENT_PLANS_URL.'/'.$paymentPlan->id)->assertNoContent();
+
+        $this->assertNull($paymentPlan->fresh());
+        $this->assertNull($assessment->fresh()->payment_plan_id);
+        $this->assertSame(self::MONTHLY_PLAN, $assessment->fresh()->plan_name);
     }
 
     public function test_delete_missing_id_returns_404(): void

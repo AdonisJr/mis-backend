@@ -41,6 +41,14 @@ class PaymentPlanAccessTest extends TestCase
         ];
     }
 
+    /**
+     * @return array<string, array{string, string}>
+     */
+    public static function provideAdminOnlyPaymentPlanRoutes(): array
+    {
+        return array_diff_key(self::providePaymentPlanRoutes(), ['list' => true, 'show' => true]);
+    }
+
     public function test_admin_can_use_every_payment_plan_endpoint(): void
     {
         $targetYear = SchoolYear::factory()->create(self::SCHOOL_YEAR_2031);
@@ -72,8 +80,8 @@ class PaymentPlanAccessTest extends TestCase
         $this->assertEquals($snapshot, $this->snapshotPlanTables());
     }
 
-    #[DataProvider('providePaymentPlanRoutes')]
-    public function test_registrar_gets_403_on_payment_plan_routes(string $method, string $uriPattern): void
+    #[DataProvider('provideAdminOnlyPaymentPlanRoutes')]
+    public function test_registrar_gets_403_on_payment_plan_writes(string $method, string $uriPattern): void
     {
         $snapshot = $this->snapshotPlanTables();
 
@@ -84,6 +92,14 @@ class PaymentPlanAccessTest extends TestCase
 
         $this->assertEquals($snapshot, $this->snapshotPlanTables());
         $this->assertTrue($this->paymentPlan->fresh()->is_active);
+    }
+
+    public function test_registrar_can_read_payment_plans(): void
+    {
+        $registrarToken = $this->createRegistrarToken();
+
+        $this->withToken($registrarToken)->getJson(self::PAYMENT_PLANS_URL.'?school_year_id='.$this->schoolYear->id)->assertOk()->assertJsonCount(1, 'payment_plans');
+        $this->withToken($registrarToken)->getJson(self::PAYMENT_PLANS_URL.'/'.$this->paymentPlan->id)->assertOk()->assertJsonPath('payment_plan.id', $this->paymentPlan->id);
     }
 
     private function buildTargetUri(string $uriPattern): string

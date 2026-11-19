@@ -87,6 +87,12 @@ class PaymentPlan extends Model
         return $this->hasMany(PaymentPlanInstallment::class)->orderBy('sequence');
     }
 
+    /** @return HasMany<Assessment, $this> */
+    public function assessments(): HasMany
+    {
+        return $this->hasMany(Assessment::class);
+    }
+
     /** @param Builder<PaymentPlan> $query */
     public function scopeActive(Builder $query): void
     {

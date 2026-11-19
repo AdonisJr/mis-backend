@@ -112,6 +112,13 @@ class Enrollment extends Model
             ->when($candidate->term_id, fn (Builder $periodQuery) => $periodQuery->where(fn (Builder $termQuery) => $termQuery->whereNull('term_id')->orWhere('term_id', $candidate->term_id)));
     }
 
+    /** @param Builder<Enrollment> $query */
+    public function scopeEligibleForAssessment(Builder $query, int $schoolYearId): void
+    {
+        $query->whereIn('enrollments.status', StudentDiscount::ELIGIBLE_ENROLLMENT_STATUSES)
+            ->whereHas('section', fn (Builder $sectionQuery) => $sectionQuery->where('school_year_id', $schoolYearId));
+    }
+
     public function hasOverlappingEnrollment(): bool
     {
         return self::enrolled()->where('student_id', $this->student_id)->inPeriodOf($this)->exists();

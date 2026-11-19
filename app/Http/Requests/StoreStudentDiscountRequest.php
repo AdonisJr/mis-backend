@@ -47,6 +47,7 @@ class StoreStudentDiscountRequest extends FormRequest
             'discount_type_id' => StoreSectionRequest::buildIdRules('required', DiscountType::class),
             'reference_no' => ['nullable', 'string', 'max:50'],
             'remarks' => ['nullable', 'string', 'max:500'],
+            'reassess' => ['nullable', 'boolean'],
         ];
     }
 

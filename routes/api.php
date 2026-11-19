@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\AssessmentCandidateController;
+use App\Http\Controllers\AssessmentController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DiscountTypeController;
 use App\Http\Controllers\EmployeeController;
@@ -46,6 +48,15 @@ Route::prefix('mis')->group(function () {
         Route::put('/enrollments/{id}/drop', [EnrollmentController::class, 'dropEnrollment'])->whereNumber('id');
         Route::put('/enrollments/{id}/transfer', [EnrollmentController::class, 'transferEnrollment'])->whereNumber('id');
         Route::put('/enrollments/{id}/complete', [EnrollmentController::class, 'completeEnrollment'])->whereNumber('id');
+        Route::get('/assessments', [AssessmentController::class, 'listAssessments']);
+        Route::get('/assessments/candidates', [AssessmentCandidateController::class, 'listCandidates']);
+        Route::post('/assessments/preview', [AssessmentController::class, 'previewAssessment']);
+        Route::post('/assessments', [AssessmentController::class, 'createAssessment']);
+        Route::get('/assessments/{id}', [AssessmentController::class, 'showAssessment'])->whereNumber('id');
+        Route::get('/assessments/{id}/history', [AssessmentController::class, 'listHistory'])->whereNumber('id');
+        Route::post('/assessments/{id}/reassess', [AssessmentController::class, 'reassessAssessment'])->whereNumber('id');
+        Route::get('/payment-plans', [PaymentPlanController::class, 'listPaymentPlans']);
+        Route::get('/payment-plans/{id}', [PaymentPlanController::class, 'showPaymentPlan'])->whereNumber('id');
     });
 
     Route::middleware(['auth:sanctum', 'role:'.Role::ADMIN])->group(function () {
@@ -84,9 +95,7 @@ Route::prefix('mis')->group(function () {
         Route::put('/fee-schedules/{id}', [FeeScheduleController::class, 'updateFeeSchedule'])->whereNumber('id');
         Route::delete('/fee-schedules/{id}', [FeeScheduleController::class, 'deleteFeeSchedule'])->whereNumber('id');
         Route::post('/payment-plans/copy', [PaymentPlanCopyController::class, 'copyPaymentPlans']);
-        Route::get('/payment-plans', [PaymentPlanController::class, 'listPaymentPlans']);
         Route::post('/payment-plans', [PaymentPlanController::class, 'createPaymentPlan']);
-        Route::get('/payment-plans/{id}', [PaymentPlanController::class, 'showPaymentPlan'])->whereNumber('id');
         Route::put('/payment-plans/{id}', [PaymentPlanController::class, 'updatePaymentPlan'])->whereNumber('id');
         Route::delete('/payment-plans/{id}', [PaymentPlanController::class, 'deletePaymentPlan'])->whereNumber('id');
         Route::put('/payment-plans/{id}/deactivate', [PaymentPlanController::class, 'deactivatePaymentPlan'])->whereNumber('id');
