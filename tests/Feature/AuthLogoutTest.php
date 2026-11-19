@@ -32,6 +32,16 @@ class AuthLogoutTest extends TestCase
         $this->assertSame(0, $adminUser->tokens()->count());
     }
 
+    public function test_cashier_can_logout(): void
+    {
+        $cashierUser = User::factory()->cashier()->create();
+        $plainTextToken = $cashierUser->createToken(self::TOKEN_NAME)->plainTextToken;
+
+        $this->withToken($plainTextToken)->postJson(self::LOGOUT_URL)->assertNoContent();
+
+        $this->assertSame(0, $cashierUser->tokens()->count());
+    }
+
     public function test_revoked_token_returns_401_on_next_request(): void
     {
         $adminUser = User::factory()->admin()->create();

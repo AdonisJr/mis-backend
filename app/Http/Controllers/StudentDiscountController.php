@@ -122,6 +122,10 @@ class StudentDiscountController extends Controller
             return null;
         }
 
+        if ($currentAssessment->hasValidPayments()) {
+            throw ValidationException::withMessages(['reassess' => Assessment::HAS_PAYMENTS_MESSAGE]);
+        }
+
         if (! $isReassessConfirmed) {
             throw ValidationException::withMessages(['assessment' => self::CURRENT_ASSESSMENT_MESSAGE]);
         }

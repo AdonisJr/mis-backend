@@ -9,6 +9,7 @@ use App\Models\DiscountType;
 use App\Models\FeeItem;
 use App\Models\FeeSchedule;
 use App\Models\GradeLevel;
+use App\Models\Payment;
 use App\Models\PaymentPlan;
 use App\Models\Student;
 use App\Models\StudentDiscount;
@@ -186,6 +187,52 @@ class StudentDiscountReassessTest extends TestCase
 
         $this->assertDatabaseCount('student_discounts', 0);
         $this->assertSame(1, Assessment::count());
+    }
+
+    public function test_add_discount_blocked_while_payments_exist(): void
+    {
+        $assessment = $this->assessStudent($this->student, $this->paymentPlan);
+        Payment::factory()->create(['assessment_id' => $assessment['id']]);
+        $snapshot = $this->snapshotAssessmentTables();
+
+        foreach ([[], ['reassess' => true]] as $extraFields) {
+            $this->postAssignment([...$this->buildAssignmentPayload($this->student, $this->discountType), ...$extraFields])
+                ->assertUnprocessable()
+                ->assertJsonPath('errors.reassess.0', Assessment::HAS_PAYMENTS_MESSAGE)
+                ->assertJsonMissingValidationErrors(['assessment']);
+        }
+
+        $this->assertDatabaseCount('student_discounts', 0);
+        $this->assertEquals($snapshot, $this->snapshotAssessmentTables());
+    }
+
+    public function test_remove_discount_blocked_while_payments_exist(): void
+    {
+        $studentDiscount = $this->assignType($this->student, $this->discountType);
+        $assessment = $this->assessStudent($this->student, $this->paymentPlan);
+        Payment::factory()->create(['assessment_id' => $assessment['id']]);
+        $snapshot = $this->snapshotAssessmentTables();
+
+        foreach (['', '?reassess=1'] as $query) {
+            $this->deleteAssignment($studentDiscount->id, $query)
+                ->assertUnprocessable()
+                ->assertJsonPath('errors.reassess.0', Assessment::HAS_PAYMENTS_MESSAGE)
+                ->assertJsonMissingValidationErrors(['assessment']);
+        }
+
+        $this->assertDatabaseHas('student_discounts', ['id' => $studentDiscount->id]);
+        $this->assertEquals($snapshot, $this->snapshotAssessmentTables());
+    }
+
+    public function test_voided_payments_do_not_block_discount_reassess(): void
+    {
+        $assessment = $this->assessStudent($this->student, $this->paymentPlan);
+        Payment::factory()->voided()->create(['assessment_id' => $assessment['id']]);
+
+        $this->postAssignment([...$this->buildAssignmentPayload($this->student, $this->discountType), 'reassess' => true])->assertCreated();
+
+        $this->assertSame(Assessment::STATUS_SUPERSEDED, Assessment::find($assessment['id'])->status);
+        $this->assertSame('4500.00', Assessment::current()->first()->net_total);
     }
 
     private function deleteAssignment(int $studentDiscountId, string $query = ''): TestResponse

@@ -9,12 +9,12 @@ use App\Models\PaymentPlan;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
-use Tests\Feature\Concerns\InteractsWithAssessments;
+use Tests\Feature\Concerns\InteractsWithPayments;
 use Tests\TestCase;
 
 class AssessmentAccessTest extends TestCase
 {
-    use InteractsWithAssessments;
+    use InteractsWithPayments;
     use RefreshDatabase;
 
     private Assessment $assessment;
@@ -79,6 +79,16 @@ class AssessmentAccessTest extends TestCase
     public function test_registrar_can_use_every_assessment_endpoint(): void
     {
         $this->assertCanUseEveryAssessmentEndpoint($this->createRegistrarToken());
+    }
+
+    public function test_cashier_can_read_assessments(): void
+    {
+        $cashierToken = $this->createCashierToken();
+        $baseUrl = self::ASSESSMENTS_URL;
+
+        $this->withToken($cashierToken)->getJson($baseUrl.'?school_year_id='.$this->schoolYear->id)->assertOk();
+        $this->withToken($cashierToken)->getJson($baseUrl.'/'.$this->assessment->id)->assertOk()->assertJsonPath('assessment.id', $this->assessment->id);
+        $this->withToken($cashierToken)->getJson($baseUrl.'/'.$this->assessment->id.'/history')->assertOk();
     }
 
     private function assertCanUseEveryAssessmentEndpoint(string $token): void

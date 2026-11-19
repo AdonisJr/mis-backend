@@ -107,6 +107,14 @@ class EmployeeCrudTest extends TestCase
             ->assertJsonPath('employee.roles', [Role::ADMIN, Role::REGISTRAR]);
     }
 
+    public function test_create_employee_with_cashier_role(): void
+    {
+        $this->withToken($this->createActingAdminToken())
+            ->postJson(self::EMPLOYEES_URL, [...self::VALID_PAYLOAD, 'roles' => [Role::CASHIER]])
+            ->assertCreated()
+            ->assertJsonPath('employee.roles', [Role::CASHIER]);
+    }
+
     public function test_create_without_contact_stores_null(): void
     {
         $adminToken = $this->createActingAdminToken();

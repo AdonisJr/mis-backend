@@ -21,6 +21,12 @@ class DatabaseSeederTest extends TestCase
 
     private const ADMIN_PASSWORD = '123';
 
+    private const CASHIER_EMAIL = 'cashier@example.com';
+
+    private const CASHIER_PASSWORD = 'cashier123';
+
+    private const CHANGED_CASHIER_PASSWORD = 'changed-secret-9';
+
     private const PROGRAMS_URL = '/api/mis/programs';
 
     private const TOKEN_NAME = 'test';
@@ -82,9 +88,41 @@ class DatabaseSeederTest extends TestCase
         $this->seed();
         $this->seed();
 
-        $this->assertSame(1, User::count());
-        $this->assertSame(2, Role::count());
-        $this->assertSame(1, DB::table('role_user')->count());
+        $this->assertSame(2, User::count());
+        $this->assertSame(3, Role::count());
+        $this->assertSame(2, DB::table('role_user')->count());
+    }
+
+    public function test_seeder_creates_demo_cashier(): void
+    {
+        $this->seed();
+
+        $cashierUser = User::where('email', self::CASHIER_EMAIL)->firstOrFail();
+        $this->assertTrue(Hash::check(self::CASHIER_PASSWORD, $cashierUser->password));
+        $this->assertSame([Role::CASHIER], $cashierUser->roles()->pluck('name')->all());
+    }
+
+    public function test_seeded_cashier_can_log_in(): void
+    {
+        $this->seed();
+
+        $loginResponse = $this->postJson('/api/mis/login', ['email' => self::CASHIER_EMAIL, 'password' => self::CASHIER_PASSWORD])
+            ->assertOk()
+            ->assertJsonPath('user.roles', [Role::CASHIER]);
+
+        $this->withToken($loginResponse->json('token'))->getJson('/api/mis/user')->assertOk();
+    }
+
+    public function test_reseeding_keeps_changed_cashier_password(): void
+    {
+        $this->seed();
+        User::where('email', self::CASHIER_EMAIL)->firstOrFail()->forceFill(['password' => self::CHANGED_CASHIER_PASSWORD])->save();
+
+        $this->seed();
+
+        $cashierUser = User::where('email', self::CASHIER_EMAIL)->firstOrFail();
+        $this->assertTrue(Hash::check(self::CHANGED_CASHIER_PASSWORD, $cashierUser->password));
+        $this->assertFalse(Hash::check(self::CASHIER_PASSWORD, $cashierUser->password));
     }
 
     public function test_seeder_fails_fast_without_admin_config(): void

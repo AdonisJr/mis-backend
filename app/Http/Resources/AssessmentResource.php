@@ -45,6 +45,12 @@ class AssessmentResource extends JsonResource
             'created_at' => $isStored ? $this->created_at : null,
             'superseded_at' => $isStored ? $this->superseded_at : null,
             'superseded_by' => $isStored ? $this->buildUserSummary($this->superseder) : null,
+            // a preview draft has no payments, so the keys exist only on a stored assessment
+            $this->mergeWhen($isStored, fn () => [
+                'total_paid' => (string) $this->calculateTotalPaid(),
+                'balance' => (string) $this->calculateBalance(),
+                'has_payments' => $this->calculateTotalPaid()->isPositive(),
+            ]),
         ];
     }
 

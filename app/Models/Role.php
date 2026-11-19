@@ -16,7 +16,15 @@ class Role extends Model
 
     public const REGISTRAR = 'registrar';
 
-    public const STAFF_ROLES = [self::ADMIN, self::REGISTRAR];
+    public const CASHIER = 'cashier';
+
+    public const STAFF_ROLES = [self::ADMIN, self::REGISTRAR, self::CASHIER];
+
+    public const REGISTRY_ROLES = [self::ADMIN, self::REGISTRAR];
+
+    public const BILLING_READ_ROLES = [self::ADMIN, self::REGISTRAR, self::CASHIER];
+
+    public const PAYMENT_WRITE_ROLES = [self::ADMIN, self::CASHIER];
 
     /**
      * The attributes that are mass assignable.

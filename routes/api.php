@@ -10,6 +10,7 @@ use App\Http\Controllers\FeeItemController;
 use App\Http\Controllers\FeeScheduleController;
 use App\Http\Controllers\FeeScheduleCopyController;
 use App\Http\Controllers\GradeLevelController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PaymentPlanController;
 use App\Http\Controllers\PaymentPlanCopyController;
 use App\Http\Controllers\ProgramController;
@@ -30,14 +31,17 @@ Route::prefix('mis')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/school-years/get-active', [SchoolYearController::class, 'fetchActiveSchoolYear']);
         Route::get('/school-years', [SchoolYearController::class, 'listSchoolYears']);
-        Route::get('/students', [StudentController::class, 'listStudents']);
-        Route::post('/students', [StudentController::class, 'createStudent']);
-        Route::put('/students/{id}', [StudentController::class, 'updateStudent'])->whereNumber('id');
-        Route::delete('/students/{id}', [StudentController::class, 'deleteStudent'])->whereNumber('id');
         Route::get('/grade-levels', [GradeLevelController::class, 'listGradeLevels']);
         Route::get('/programs', [ProgramController::class, 'listPrograms']);
         Route::get('/school-years/{id}/terms', [TermController::class, 'listTerms'])->whereNumber('id');
         Route::get('/terms/get-active', [TermController::class, 'fetchActiveTerm']);
+    });
+
+    Route::middleware(['auth:sanctum', 'role:'.implode(',', Role::REGISTRY_ROLES)])->group(function () {
+        Route::get('/students', [StudentController::class, 'listStudents']);
+        Route::post('/students', [StudentController::class, 'createStudent']);
+        Route::put('/students/{id}', [StudentController::class, 'updateStudent'])->whereNumber('id');
+        Route::delete('/students/{id}', [StudentController::class, 'deleteStudent'])->whereNumber('id');
         Route::get('/sections', [SectionController::class, 'listSections']);
         Route::get('/sections/{id}/rollover-preview', [SectionRolloverController::class, 'previewRollover'])->whereNumber('id');
         Route::post('/sections/{id}/rollover', [SectionRolloverController::class, 'rolloverSection'])->whereNumber('id');
@@ -48,15 +52,27 @@ Route::prefix('mis')->group(function () {
         Route::put('/enrollments/{id}/drop', [EnrollmentController::class, 'dropEnrollment'])->whereNumber('id');
         Route::put('/enrollments/{id}/transfer', [EnrollmentController::class, 'transferEnrollment'])->whereNumber('id');
         Route::put('/enrollments/{id}/complete', [EnrollmentController::class, 'completeEnrollment'])->whereNumber('id');
-        Route::get('/assessments', [AssessmentController::class, 'listAssessments']);
         Route::get('/assessments/candidates', [AssessmentCandidateController::class, 'listCandidates']);
         Route::post('/assessments/preview', [AssessmentController::class, 'previewAssessment']);
         Route::post('/assessments', [AssessmentController::class, 'createAssessment']);
-        Route::get('/assessments/{id}', [AssessmentController::class, 'showAssessment'])->whereNumber('id');
-        Route::get('/assessments/{id}/history', [AssessmentController::class, 'listHistory'])->whereNumber('id');
         Route::post('/assessments/{id}/reassess', [AssessmentController::class, 'reassessAssessment'])->whereNumber('id');
         Route::get('/payment-plans', [PaymentPlanController::class, 'listPaymentPlans']);
         Route::get('/payment-plans/{id}', [PaymentPlanController::class, 'showPaymentPlan'])->whereNumber('id');
+    });
+
+    Route::middleware(['auth:sanctum', 'role:'.implode(',', Role::BILLING_READ_ROLES)])->group(function () {
+        Route::get('/assessments', [AssessmentController::class, 'listAssessments']);
+        Route::get('/assessments/{id}', [AssessmentController::class, 'showAssessment'])->whereNumber('id');
+        Route::get('/assessments/{id}/history', [AssessmentController::class, 'listHistory'])->whereNumber('id');
+        Route::get('/payments', [PaymentController::class, 'listPayments']);
+        Route::get('/payments/ledger', [PaymentController::class, 'showLedger']);
+        Route::get('/payments/recorders', [PaymentController::class, 'listRecorders']);
+        Route::get('/payments/{id}/receipt', [PaymentController::class, 'showReceipt'])->whereNumber('id');
+    });
+
+    Route::middleware(['auth:sanctum', 'role:'.implode(',', Role::PAYMENT_WRITE_ROLES)])->group(function () {
+        Route::post('/payments', [PaymentController::class, 'recordPayment']);
+        Route::put('/payments/{id}/void', [PaymentController::class, 'voidPayment'])->whereNumber('id');
     });
 
     Route::middleware(['auth:sanctum', 'role:'.Role::ADMIN])->group(function () {
