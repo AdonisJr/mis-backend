@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Http\Controllers\StudentController;
+use App\Models\Assessment;
 use App\Models\Enrollment;
 use App\Models\SchoolYear;
 use App\Models\Section;
@@ -404,6 +405,30 @@ class StudentCrudTest extends TestCase
     {
         $enrollment = Enrollment::factory()->create();
         StudentDiscount::factory()->create(['student_id' => $enrollment->student_id]);
+
+        $this->withToken($this->createTokenFor(User::factory()->admin()->create()))
+            ->deleteJson(self::STUDENTS_URL.'/'.$enrollment->student_id)
+            ->assertUnprocessable()
+            ->assertExactJson(['message' => StudentController::ENROLLMENTS_DELETE_MESSAGE]);
+    }
+
+    public function test_delete_student_with_assessments_returns_422(): void
+    {
+        $assessment = Assessment::factory()->create();
+
+        $this->withToken($this->createTokenFor(User::factory()->admin()->create()))
+            ->deleteJson(self::STUDENTS_URL.'/'.$assessment->student_id)
+            ->assertUnprocessable()
+            ->assertExactJson(['message' => StudentController::ASSESSMENTS_DELETE_MESSAGE]);
+
+        $this->assertNotNull($assessment->student->fresh());
+        $this->assertNotNull($assessment->fresh());
+    }
+
+    public function test_delete_student_with_enrollments_and_assessments_reports_enrollments(): void
+    {
+        $enrollment = Enrollment::factory()->create();
+        Assessment::factory()->create(['student_id' => $enrollment->student_id]);
 
         $this->withToken($this->createTokenFor(User::factory()->admin()->create()))
             ->deleteJson(self::STUDENTS_URL.'/'.$enrollment->student_id)

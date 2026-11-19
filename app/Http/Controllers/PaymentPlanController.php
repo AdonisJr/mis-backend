@@ -23,6 +23,8 @@ class PaymentPlanController extends Controller
 
     public const RELATIONS = ['installments'];
 
+    public const ASSESSMENTS_DELETE_MESSAGE = 'The payment plan is used by a current assessment and cannot be deleted.';
+
     private const SEARCH_COLUMNS = ['name'];
 
     public function listPaymentPlans(ListPaymentPlansRequest $request): JsonResponse
@@ -74,9 +76,21 @@ class PaymentPlanController extends Controller
         return $this->saveActiveState($id, true);
     }
 
-    public function deletePaymentPlan(int $id): Response
+    public function deletePaymentPlan(int $id): Response|JsonResponse
     {
-        PaymentPlan::findOrFail($id)->delete();
+        PaymentPlan::findOrFail($id);
+
+        $deletedCount = DB::transaction(function () use ($id) {
+            // creates lock this row before they read the plan, so none can point at a plan this delete removes
+            PaymentPlan::whereKey($id)->lockForUpdate()->first();
+
+            // the conditional delete is the guard; superseded assessments only lose the reference (FK null on delete)
+            return PaymentPlan::whereKey($id)->whereDoesntHave('assessments', fn (Builder $assessmentQuery) => $assessmentQuery->current())->delete();
+        }, PaymentPlan::TRANSACTION_ATTEMPTS);
+
+        if ($deletedCount === 0) {
+            return response()->json(['message' => self::ASSESSMENTS_DELETE_MESSAGE], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
 
         return response()->noContent();
     }

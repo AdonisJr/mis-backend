@@ -3,12 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\SearchesPaginatedLists;
+use App\Http\Requests\DeleteStudentDiscountRequest;
 use App\Http\Requests\ListStudentDiscountsRequest;
 use App\Http\Requests\StoreStudentDiscountRequest;
 use App\Http\Requests\UpdateStudentDiscountRequest;
 use App\Http\Resources\StudentDiscountResource;
+use App\Models\Assessment;
 use App\Models\Student;
 use App\Models\StudentDiscount;
+use App\Support\AssessmentCalculator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +23,10 @@ class StudentDiscountController extends Controller
     use SearchesPaginatedLists;
 
     public const RELATIONS = ['student', 'discountType', 'studentEnrollments.section.gradeLevel'];
+
+    public const CURRENT_ASSESSMENT_MESSAGE = 'The student has a current assessment for this school year. Confirm to re-assess it with its payment plan.';
+
+    public const REASSESS_PLAN_INACTIVE_MESSAGE = 'The payment plan of the current assessment is inactive. Re-assess the student with an active plan first.';
 
     private const SEARCH_COLUMNS = ['students.lrn', 'students.first_name', 'students.middle_name', 'students.last_name'];
 
@@ -52,9 +59,10 @@ class StudentDiscountController extends Controller
         ]);
     }
 
-    public function deleteStudentDiscount(int $id): Response
+    public function deleteStudentDiscount(DeleteStudentDiscountRequest $request, int $id): Response
     {
-        StudentDiscount::findOrFail($id)->delete();
+        $studentDiscount = StudentDiscount::findOrFail($id);
+        DB::transaction(fn () => $this->deleteWithinLock($request, $studentDiscount), StudentDiscount::TRANSACTION_ATTEMPTS);
 
         return response()->noContent();
     }
@@ -89,10 +97,57 @@ class StudentDiscountController extends Controller
         // every assignment of a student serializes on this row, so two requests cannot both pass the held checks
         Student::whereKey($candidate->student_id)->lockForUpdate()->first();
         $this->rejectConflictingAssignment($candidate);
+        $currentAssessment = $this->rejectUnconfirmedChange($candidate, $request->boolean('reassess'));
 
         $candidate->fill($request->safe()->only(['reference_no', 'remarks']))->save();
+        $this->reassessCurrent($currentAssessment, $request->user()->id);
 
         return $candidate->load(self::RELATIONS);
+    }
+
+    private function deleteWithinLock(DeleteStudentDiscountRequest $request, StudentDiscount $studentDiscount): void
+    {
+        Student::whereKey($studentDiscount->student_id)->lockForUpdate()->first();
+        $currentAssessment = $this->rejectUnconfirmedChange($studentDiscount, $request->boolean('reassess'));
+
+        $studentDiscount->delete();
+        $this->reassessCurrent($currentAssessment, $request->user()->id);
+    }
+
+    private function rejectUnconfirmedChange(StudentDiscount $keyed, bool $isReassessConfirmed): ?Assessment
+    {
+        $currentAssessment = Assessment::current()->sameStudentYear($keyed)->first();
+
+        if ($currentAssessment === null) {
+            return null;
+        }
+
+        if (! $isReassessConfirmed) {
+            throw ValidationException::withMessages(['assessment' => self::CURRENT_ASSESSMENT_MESSAGE]);
+        }
+
+        if (! $currentAssessment->paymentPlan?->is_active) {
+            throw ValidationException::withMessages(['reassess' => self::REASSESS_PLAN_INACTIVE_MESSAGE]);
+        }
+
+        return $currentAssessment;
+    }
+
+    private function reassessCurrent(?Assessment $currentAssessment, int $userId): void
+    {
+        if ($currentAssessment === null) {
+            return;
+        }
+
+        $candidate = $currentAssessment->buildReassessCandidate($currentAssessment->payment_plan_id);
+        $candidate->forceFill(['created_by' => $userId]);
+
+        try {
+            $candidate->lockPaymentPlan();
+            (new AssessmentCalculator($candidate))->buildEligibleDraft()->saveReplacing($currentAssessment);
+        } catch (ValidationException $exception) {
+            throw ValidationException::withMessages(['reassess' => collect($exception->errors())->flatten()->first()]);
+        }
     }
 
     private function rejectConflictingAssignment(StudentDiscount $candidate): void
