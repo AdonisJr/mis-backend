@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Http\Controllers\ProgramController;
+use App\Models\CurriculumEntry;
 use App\Models\FeeSchedule;
 use App\Models\GradeLevel;
 use App\Models\Program;
@@ -518,6 +519,20 @@ class ProgramCrudTest extends TestCase
 
         $this->assertNotNull($program->fresh());
         $this->assertNotNull($feeSchedule->fresh());
+    }
+
+    public function test_delete_program_with_curriculum_entries_returns_422(): void
+    {
+        $program = Program::factory()->shs()->create(self::STEM_PROGRAM);
+        $curriculumEntry = CurriculumEntry::factory()->shs()->create(['program_id' => $program->id]);
+
+        $this->withToken($this->createAdminToken())
+            ->deleteJson(self::PROGRAMS_URL.'/'.$program->id)
+            ->assertUnprocessable()
+            ->assertExactJson(['message' => ProgramController::CURRICULUM_DELETE_MESSAGE]);
+
+        $this->assertNotNull($program->fresh());
+        $this->assertNotNull($curriculumEntry->fresh());
     }
 
     public function test_delete_program_without_sections_still_deletes(): void
