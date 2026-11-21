@@ -22,6 +22,8 @@ class ProgramController extends Controller
 
     public const FEE_SCHEDULES_DELETE_MESSAGE = 'The program has fee schedules and cannot be deleted.';
 
+    public const CURRICULUM_DELETE_MESSAGE = 'The program has curriculum entries and cannot be deleted.';
+
     public function listPrograms(ListProgramsRequest $request): JsonResponse
     {
         $programQuery = Program::query()->orderBy('code');
@@ -75,6 +77,10 @@ class ProgramController extends Controller
 
         if ($program->feeSchedules()->exists()) {
             return response()->json(['message' => self::FEE_SCHEDULES_DELETE_MESSAGE], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        if ($program->curriculumEntries()->exists()) {
+            return response()->json(['message' => self::CURRICULUM_DELETE_MESSAGE], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         $program->delete();

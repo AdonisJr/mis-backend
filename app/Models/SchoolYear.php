@@ -78,6 +78,12 @@ class SchoolYear extends Model
         return $this->hasMany(FeeSchedule::class);
     }
 
+    /** @return HasMany<CurriculumEntry, $this> */
+    public function curriculumEntries(): HasMany
+    {
+        return $this->hasMany(CurriculumEntry::class);
+    }
+
     /** @return HasMany<PaymentPlan, $this> */
     public function paymentPlans(): HasMany
     {

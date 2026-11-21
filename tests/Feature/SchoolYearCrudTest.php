@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Http\Controllers\SchoolYearController;
 use App\Http\Requests\UpdateSchoolYearRequest;
 use App\Models\Assessment;
+use App\Models\CurriculumEntry;
 use App\Models\Enrollment;
 use App\Models\FeeSchedule;
 use App\Models\PaymentPlan;
@@ -781,6 +782,33 @@ class SchoolYearCrudTest extends TestCase
     {
         $schoolYear = SchoolYear::factory()->active()->create(self::SEMESTER_YEAR);
         StudentDiscount::factory()->create(['school_year_id' => $schoolYear->id]);
+
+        $this->withToken($this->createTokenFor(User::factory()->admin()->create()))
+            ->deleteJson(self::SCHOOL_YEARS_URL.'/'.$schoolYear->id)
+            ->assertUnprocessable()
+            ->assertExactJson(['message' => SchoolYearController::ACTIVE_DELETE_MESSAGE]);
+
+        $this->assertTrue($schoolYear->fresh()->is_active);
+    }
+
+    public function test_delete_school_year_with_curriculum_entries_returns_422(): void
+    {
+        $schoolYear = SchoolYear::factory()->create(self::SEMESTER_YEAR);
+        $curriculumEntry = CurriculumEntry::factory()->create(['school_year_id' => $schoolYear->id]);
+
+        $this->withToken($this->createTokenFor(User::factory()->admin()->create()))
+            ->deleteJson(self::SCHOOL_YEARS_URL.'/'.$schoolYear->id)
+            ->assertUnprocessable()
+            ->assertExactJson(['message' => SchoolYearController::CURRICULUM_DELETE_MESSAGE]);
+
+        $this->assertNotNull($schoolYear->fresh());
+        $this->assertNotNull($curriculumEntry->fresh());
+    }
+
+    public function test_delete_active_school_year_with_curriculum_entries_reports_active_year(): void
+    {
+        $schoolYear = SchoolYear::factory()->active()->create(self::SEMESTER_YEAR);
+        CurriculumEntry::factory()->create(['school_year_id' => $schoolYear->id]);
 
         $this->withToken($this->createTokenFor(User::factory()->admin()->create()))
             ->deleteJson(self::SCHOOL_YEARS_URL.'/'.$schoolYear->id)

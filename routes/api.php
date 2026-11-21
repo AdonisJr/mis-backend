@@ -3,6 +3,8 @@
 use App\Http\Controllers\AssessmentCandidateController;
 use App\Http\Controllers\AssessmentController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CurriculumCopyController;
+use App\Http\Controllers\CurriculumEntryController;
 use App\Http\Controllers\DiscountTypeController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\EnrollmentController;
@@ -21,6 +23,7 @@ use App\Http\Controllers\SectionController;
 use App\Http\Controllers\SectionRolloverController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\StudentDiscountController;
+use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\TermController;
 use App\Models\Role;
 use Illuminate\Support\Facades\Route;
@@ -37,6 +40,9 @@ Route::prefix('mis')->group(function () {
         Route::get('/programs', [ProgramController::class, 'listPrograms']);
         Route::get('/school-years/{id}/terms', [TermController::class, 'listTerms'])->whereNumber('id');
         Route::get('/terms/get-active', [TermController::class, 'fetchActiveTerm']);
+        Route::get('/subjects', [SubjectController::class, 'listSubjects']);
+        Route::get('/subjects/active', [SubjectController::class, 'listActiveSubjects']);
+        Route::get('/curriculum-entries', [CurriculumEntryController::class, 'listEntries']);
     });
 
     Route::middleware(['auth:sanctum', 'role:'.implode(',', Role::REGISTRY_ROLES)])->group(function () {
@@ -60,6 +66,14 @@ Route::prefix('mis')->group(function () {
         Route::post('/assessments/{id}/reassess', [AssessmentController::class, 'reassessAssessment'])->whereNumber('id');
         Route::get('/payment-plans', [PaymentPlanController::class, 'listPaymentPlans']);
         Route::get('/payment-plans/{id}', [PaymentPlanController::class, 'showPaymentPlan'])->whereNumber('id');
+        Route::post('/subjects', [SubjectController::class, 'createSubject']);
+        Route::put('/subjects/{id}', [SubjectController::class, 'updateSubject'])->whereNumber('id');
+        Route::put('/subjects/{id}/deactivate', [SubjectController::class, 'deactivateSubject'])->whereNumber('id');
+        Route::put('/subjects/{id}/reactivate', [SubjectController::class, 'reactivateSubject'])->whereNumber('id');
+        Route::post('/curriculum-entries/copy', [CurriculumCopyController::class, 'copyEntries']);
+        Route::post('/curriculum-entries', [CurriculumEntryController::class, 'createEntry']);
+        Route::put('/curriculum-entries/{id}', [CurriculumEntryController::class, 'updateEntry'])->whereNumber('id');
+        Route::delete('/curriculum-entries/{id}', [CurriculumEntryController::class, 'deleteEntry'])->whereNumber('id');
     });
 
     Route::middleware(['auth:sanctum', 'role:'.implode(',', Role::BILLING_READ_ROLES)])->group(function () {
