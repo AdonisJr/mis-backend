@@ -68,4 +68,10 @@ class Student extends Model
     {
         return $this->hasMany(Assessment::class);
     }
+
+    /** @return HasMany<PromissoryNote, $this> */
+    public function promissoryNotes(): HasMany
+    {
+        return $this->hasMany(PromissoryNote::class)->orderByDesc('id');
+    }
 }

@@ -11,9 +11,11 @@ use App\Http\Controllers\FeeScheduleController;
 use App\Http\Controllers\FeeScheduleCopyController;
 use App\Http\Controllers\GradeLevelController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\PaymentHoldController;
 use App\Http\Controllers\PaymentPlanController;
 use App\Http\Controllers\PaymentPlanCopyController;
 use App\Http\Controllers\ProgramController;
+use App\Http\Controllers\PromissoryNoteController;
 use App\Http\Controllers\SchoolYearController;
 use App\Http\Controllers\SectionController;
 use App\Http\Controllers\SectionRolloverController;
@@ -68,11 +70,15 @@ Route::prefix('mis')->group(function () {
         Route::get('/payments/ledger', [PaymentController::class, 'showLedger']);
         Route::get('/payments/recorders', [PaymentController::class, 'listRecorders']);
         Route::get('/payments/{id}/receipt', [PaymentController::class, 'showReceipt'])->whereNumber('id');
+        Route::get('/payment-holds', [PaymentHoldController::class, 'listPaymentHolds']);
+        Route::get('/payment-holds/check', [PaymentHoldController::class, 'checkHold']);
     });
 
     Route::middleware(['auth:sanctum', 'role:'.implode(',', Role::PAYMENT_WRITE_ROLES)])->group(function () {
         Route::post('/payments', [PaymentController::class, 'recordPayment']);
         Route::put('/payments/{id}/void', [PaymentController::class, 'voidPayment'])->whereNumber('id');
+        Route::post('/promissory-notes', [PromissoryNoteController::class, 'createNote']);
+        Route::put('/promissory-notes/{id}/cancel', [PromissoryNoteController::class, 'cancelNote'])->whereNumber('id');
     });
 
     Route::middleware(['auth:sanctum', 'role:'.Role::ADMIN])->group(function () {

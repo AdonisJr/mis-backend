@@ -98,7 +98,7 @@ class PaymentController extends Controller
         }
 
         return response()->json([
-            'ledger' => PaymentLedgerResource::make($currentAssessment),
+            'ledger' => PaymentLedgerResource::make($currentAssessment->loadPromissoryNotes()),
         ]);
     }
 

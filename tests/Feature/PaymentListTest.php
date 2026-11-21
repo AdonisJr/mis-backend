@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Http\Controllers\PaymentController;
 use App\Models\Assessment;
 use App\Models\Payment;
+use App\Models\PromissoryNote;
+use App\Models\SchoolYear;
 use App\Models\Student;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -283,6 +285,21 @@ class PaymentListTest extends TestCase
         $this->assertSame('5000.00', $ledger['net_total']);
         $this->assertSame('400.00', $ledger['total_paid']);
         $this->assertSame('4600.00', $ledger['balance']);
+    }
+
+    public function test_ledger_lists_notes_of_that_year_newest_first_with_status(): void
+    {
+        $noteFields = ['student_id' => $this->assessment['student_id'], 'school_year_id' => $this->assessment['school_year_id'], 'promise_date' => '2030-07-15'];
+        $activeNote = PromissoryNote::factory()->create($noteFields);
+        $cancelledNote = PromissoryNote::factory()->cancelled()->create($noteFields);
+        PromissoryNote::factory()->create([...$noteFields, 'school_year_id' => SchoolYear::factory()->create(self::SCHOOL_YEAR_2031)->id]);
+        PromissoryNote::factory()->create([...$noteFields, 'student_id' => Student::factory()->create()->id]);
+
+        $ledgerNotes = $this->fetchLedger($this->cashierToken, $this->assessment)->assertOk()->json('ledger.promissory_notes');
+
+        $this->assertSame([$cancelledNote->id, $activeNote->id], array_column($ledgerNotes, 'id'));
+        $this->assertSame([PromissoryNote::STATUS_CANCELLED, PromissoryNote::STATUS_ACTIVE], array_column($ledgerNotes, 'status'));
+        $this->assertSame(['id', 'student_id', 'school_year_id', 'student', 'school_year', 'promised_amount', 'promise_date', 'remarks', 'status', 'granted_by', 'granted_at', 'cancelled_by', 'cancelled_at', 'cancel_reason'], array_keys($ledgerNotes[0]));
     }
 
     /**
