@@ -156,6 +156,18 @@ class Assessment extends Model
         return BigDecimal::of($this->net_total)->minus($this->calculateTotalPaid());
     }
 
+    /** Notes of this student and year, each carrying this assessment's balance so its status can be derived. */
+    public function loadPromissoryNotes(): self
+    {
+        $promissoryNotes = $this->student->promissoryNotes()
+            ->where('promissory_notes.school_year_id', $this->school_year_id)
+            ->with(PromissoryNote::ROW_RELATIONS)
+            ->get();
+        $promissoryNotes->each->assignYearBalance($this->calculateBalance());
+
+        return $this->setRelation('promissoryNotes', $promissoryNotes);
+    }
+
     /** @param Builder<Assessment> $query */
     public function scopeCurrent(Builder $query): void
     {

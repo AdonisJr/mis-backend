@@ -11,6 +11,7 @@ use App\Http\Resources\EnrollmentResource;
 use App\Models\Enrollment;
 use App\Models\Section;
 use App\Models\Student;
+use App\Support\PaymentHold;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -30,6 +31,8 @@ class EnrollmentController extends Controller
     public const MOVE_TARGET_MESSAGE = 'The new section must be in the same school year and grade level.';
 
     public const ENDED_BEFORE_ENROLLED_MESSAGE = 'The end date cannot be before the enrolled date.';
+
+    public const HOLD_ERROR_KEY = 'hold';
 
     private const SEARCH_COLUMNS = ['students.lrn', 'students.first_name', 'students.middle_name', 'students.last_name'];
 
@@ -122,6 +125,7 @@ class EnrollmentController extends Controller
         ]);
         $candidate->setRelation('section', $lockedSection);
 
+        $this->rejectHeldStudent($candidate);
         $this->rejectOverlappingEnrollment($candidate);
         $this->rejectFullSection($candidate);
         $candidate->save();
@@ -197,6 +201,18 @@ class EnrollmentController extends Controller
         }
 
         return $endedAt;
+    }
+
+    private function rejectHeldStudent(Enrollment $candidate): void
+    {
+        // only POST /enrollments runs this guard: move, drop, transfer, complete, section complete and rollover never check holds
+        $paymentHold = new PaymentHold($candidate->student_id, $candidate->section->schoolYear);
+
+        if (! $paymentHold->isOnHold()) {
+            return;
+        }
+
+        throw ValidationException::withMessages([self::HOLD_ERROR_KEY => $paymentHold->buildHoldMessage()]);
     }
 
     private function rejectOverlappingEnrollment(Enrollment $candidate): void

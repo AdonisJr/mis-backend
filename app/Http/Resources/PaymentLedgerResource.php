@@ -35,6 +35,7 @@ class PaymentLedgerResource extends JsonResource
             'next_amount_due' => (string) $allocation->calculateNextAmountDue(),
             'schedule' => $allocation->buildScheduleRows(),
             'payments' => PaymentResource::collection($this->payments),
+            'promissory_notes' => PromissoryNoteResource::collection($this->promissoryNotes),
         ];
     }
 }

@@ -26,7 +26,7 @@ trait InteractsWithPayments
     private const RECEIPT_KEYS = [...self::PAYMENT_ROW_KEYS, 'school_year', 'grade_level', 'program'];
 
     private const LEDGER_KEYS = [
-        'assessment_id', 'student', 'school_year', 'grade_level', 'program', 'plan_name', 'net_total', 'total_paid', 'balance', 'next_amount_due', 'schedule', 'payments',
+        'assessment_id', 'student', 'school_year', 'grade_level', 'program', 'plan_name', 'net_total', 'total_paid', 'balance', 'next_amount_due', 'schedule', 'payments', 'promissory_notes',
     ];
 
     private const SCHEDULE_ROW_KEYS = ['sequence', 'label', 'due_date', 'amount', 'paid', 'status', 'is_overdue'];
