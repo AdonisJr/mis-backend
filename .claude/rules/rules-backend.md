@@ -41,6 +41,8 @@ The repo is generator output only (`composer create-project laravel/laravel` + `
 ## 3. Layer Rules
 
 - **migration** — every schema change goes in a new migration. Never edit a migration that has already run (framework default).
+  - Name every multi-column index, unique and foreign key explicitly when the generated `<table>_<cols>_<type>` name could exceed 63 characters. MySQL (dev) allows 64 and Postgres (prod) 63, and the SQLite tests allow any length, so a long name passes the tests and then breaks `migrate` (MIS-21 `curriculum_entries`, fixed 2026-11-22).
+  - Before handing off a ticket with migrations, run `php artisan migrate` on the dev MySQL database, not only the tests.
 - **model** — declare `$fillable` and `casts()` like `app/Models/User.php`. Never use `$guarded = []` (`app/Models/User.php`).
 - **request** — validation lives in a FormRequest or `$request->validate()` in the controller (framework default).
 - **controller** — thin: validate, call Eloquent, return JSON (framework default).
