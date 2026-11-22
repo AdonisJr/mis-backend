@@ -13,6 +13,8 @@ class UpdateSectionRequest extends StoreSectionRequest
 {
     public const ENROLLED_SECTION_LOCKED_MESSAGE = 'This field cannot change once the section has enrollments.';
 
+    public const CLASSES_SECTION_LOCKED_MESSAGE = 'This field cannot change once the section has classes.';
+
     public const CAPACITY_BELOW_ENROLLED_MESSAGE = 'The capacity cannot be lower than the number of enrolled students.';
 
     private const LOCKED_FIELDS = ['school_year_id', 'grade_level_id', 'program_id'];
@@ -58,13 +60,19 @@ class UpdateSectionRequest extends StoreSectionRequest
 
     private function rejectLockedChanges(Validator $validator): void
     {
-        $enrolledSection = $this->findSectionWithEnrollments();
+        $lockedSection = $this->findLockedSection();
+
+        if (! $lockedSection) {
+            return;
+        }
+
+        $lockedMessage = $lockedSection->enrollments()->exists() ? self::ENROLLED_SECTION_LOCKED_MESSAGE : self::CLASSES_SECTION_LOCKED_MESSAGE;
 
         foreach (self::LOCKED_FIELDS as $lockedField) {
-            $isLockedFieldChanged = $enrolledSection && ! $validator->errors()->has($lockedField) && $this->isFieldChanged($enrolledSection, $lockedField);
+            $isLockedFieldChanged = ! $validator->errors()->has($lockedField) && $this->isFieldChanged($lockedSection, $lockedField);
 
             if ($isLockedFieldChanged) {
-                $validator->errors()->add($lockedField, self::ENROLLED_SECTION_LOCKED_MESSAGE);
+                $validator->errors()->add($lockedField, $lockedMessage);
             }
         }
     }
@@ -90,6 +98,14 @@ class UpdateSectionRequest extends StoreSectionRequest
         $section = Section::find($this->route('id'));
 
         return $section?->enrollments()->exists() ? $section : null;
+    }
+
+    private function findLockedSection(): ?Section
+    {
+        // a missing id returns null here and the controller answers 404
+        $section = Section::find($this->route('id'));
+
+        return $section && ($section->enrollments()->exists() || $section->schoolClasses()->exists()) ? $section : null;
     }
 
     private function isFieldChanged(Section $section, string $field): bool

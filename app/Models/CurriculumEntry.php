@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CurriculumEntry extends Model
 {
@@ -100,5 +101,11 @@ class CurriculumEntry extends Model
     public function buildGroupKey(): string
     {
         return $this->grade_level_id.'-'.($this->program_id ?? self::NO_VALUE_KEY).'-'.($this->term_number ?? self::NO_VALUE_KEY);
+    }
+
+    /** @return HasMany<SchoolClass, $this> */
+    public function schoolClasses(): HasMany
+    {
+        return $this->hasMany(SchoolClass::class);
     }
 }

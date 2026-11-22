@@ -59,4 +59,10 @@ class Room extends Model
     {
         $query->where('is_active', true);
     }
+
+    /** @return HasMany<ClassMeeting, $this> */
+    public function classMeetings(): HasMany
+    {
+        return $this->hasMany(ClassMeeting::class);
+    }
 }

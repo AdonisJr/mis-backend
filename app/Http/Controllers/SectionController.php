@@ -21,6 +21,8 @@ class SectionController extends Controller
 
     public const ENROLLMENTS_DELETE_MESSAGE = 'The section has enrollments and cannot be deleted.';
 
+    public const CLASSES_DELETE_MESSAGE = 'The section has classes and cannot be deleted.';
+
     private const SEARCH_COLUMNS = ['sections.name'];
 
     private const RELATIONS = ['gradeLevel', 'program', 'room', 'adviser'];
@@ -70,7 +72,11 @@ class SectionController extends Controller
             return response()->json(['message' => self::ENROLLMENTS_DELETE_MESSAGE], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        $section->delete();
+        $isDeleted = DB::transaction(fn () => $this->deleteUnlessScheduled($section), Section::TRANSACTION_ATTEMPTS);
+
+        if (! $isDeleted) {
+            return response()->json(['message' => self::CLASSES_DELETE_MESSAGE], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
 
         return response()->noContent();
     }
@@ -78,6 +84,18 @@ class SectionController extends Controller
     protected function getSearchColumns(): array
     {
         return self::SEARCH_COLUMNS;
+    }
+
+    private function deleteUnlessScheduled(Section $section): bool
+    {
+        // every class save of a school year serializes on this row, so a class cannot be added while the section is deleted
+        SchoolYear::whereKey($section->school_year_id)->lockForUpdate()->first();
+
+        if ($section->schoolClasses()->exists()) {
+            return false;
+        }
+
+        return (bool) $section->delete();
     }
 
     private function saveWithinLock(StoreSectionRequest $request, Section $section): Section

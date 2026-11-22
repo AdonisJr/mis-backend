@@ -4,6 +4,7 @@ namespace App\Http\Resources\Concerns;
 
 use App\Models\GradeLevel;
 use App\Models\Program;
+use App\Models\Room;
 use App\Models\Student;
 use App\Models\User;
 
@@ -37,5 +38,11 @@ trait BuildsAssessmentSummaries
     private function buildUserSummary(?User $user): ?array
     {
         return $user ? ['id' => $user->id, 'name' => $user->name] : null;
+    }
+
+    /** @return array{id: int, name: string, building: string|null}|null */
+    private function buildRoomSummary(?Room $room): ?array
+    {
+        return $room ? ['id' => $room->id, 'name' => $room->name, 'building' => $room->building] : null;
     }
 }

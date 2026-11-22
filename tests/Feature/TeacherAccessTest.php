@@ -25,7 +25,7 @@ class TeacherAccessTest extends TestCase
     private const SESSION_URIS = ['api/mis/login', 'api/mis/user', 'api/mis/logout'];
 
     // every api/mis route except the three session ones; a new route that teacher can reach fails the 403 loop first
-    private const CHECKED_ROUTE_COUNT = 109;
+    private const CHECKED_ROUTE_COUNT = 116;
 
     protected function setUp(): void
     {
