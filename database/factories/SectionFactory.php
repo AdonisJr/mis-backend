@@ -31,7 +31,8 @@ class SectionFactory extends Factory
             'program_id' => Program::factory()->shs(),
             'name' => fake()->unique()->numerify(self::NAME_PATTERN),
             'capacity' => self::DEFAULT_CAPACITY,
-            'room' => null,
+            'room_id' => null,
+            'adviser_id' => null,
         ];
     }
 

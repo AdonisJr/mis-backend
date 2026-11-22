@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateSectionRequest;
 use App\Models\Enrollment;
 use App\Models\GradeLevel;
 use App\Models\Program;
+use App\Models\Room;
 use App\Models\SchoolYear;
 use App\Models\Section;
 use App\Models\User;
@@ -48,9 +49,9 @@ class SectionCrudTest extends TestCase
 
     private const FIRST_YEAR_COLLEGE = '1st Year College';
 
-    private const SECTION_KEYS = ['id', 'school_year_id', 'grade_level_id', 'program_id', 'name', 'capacity', 'room', 'created_at', 'updated_at', 'grade_level', 'program', 'enrolled_count'];
+    private const SECTION_KEYS = ['id', 'school_year_id', 'grade_level_id', 'program_id', 'name', 'capacity', 'room_id', 'adviser_id', 'created_at', 'updated_at', 'grade_level', 'program', 'room', 'adviser', 'enrolled_count'];
 
-    private const SECTION_COLUMNS = ['id', 'school_year_id', 'grade_level_id', 'program_id', 'name', 'capacity', 'room', 'created_at', 'updated_at'];
+    private const SECTION_COLUMNS = ['id', 'school_year_id', 'grade_level_id', 'program_id', 'name', 'capacity', 'room_id', 'adviser_id', 'created_at', 'updated_at'];
 
     private SchoolYear $schoolYear;
 
@@ -74,7 +75,9 @@ class SectionCrudTest extends TestCase
             $this->assertFalse($sectionColumns[$requiredColumn]['nullable'], $requiredColumn.' must not be nullable');
         }
         $this->assertTrue($sectionColumns['program_id']['nullable']);
-        $this->assertTrue($sectionColumns['room']['nullable']);
+        $this->assertTrue($sectionColumns['room_id']['nullable']);
+        $this->assertTrue($sectionColumns['adviser_id']['nullable']);
+        $this->assertFalse(Schema::hasColumn('sections', 'room'));
     }
 
     public function test_foreign_keys_restrict_deletes(): void
@@ -87,6 +90,8 @@ class SectionCrudTest extends TestCase
             'school_year_id' => ['school_years', 'restrict'],
             'grade_level_id' => ['grade_levels', 'restrict'],
             'program_id' => ['programs', 'restrict'],
+            'room_id' => ['rooms', 'restrict'],
+            'adviser_id' => ['users', 'restrict'],
         ], $foreignKeys);
 
         $section = Section::factory()->create();
@@ -108,6 +113,7 @@ class SectionCrudTest extends TestCase
             ->assertJsonPath('section.program', null)
             ->assertJsonPath('section.capacity', self::DEFAULT_CAPACITY)
             ->assertJsonPath('section.room', null)
+            ->assertJsonPath('section.adviser', null)
             ->assertJsonPath('section.school_year_id', $this->schoolYear->id)
             ->assertJsonPath('section.grade_level', ['id' => $gradeSevenId, 'name' => self::GRADE_7, 'stage' => GradeLevel::STAGE_JHS]);
 
@@ -118,13 +124,14 @@ class SectionCrudTest extends TestCase
     public function test_admin_creates_shs_section_with_program(): void
     {
         $stemProgram = Program::factory()->create(self::STEM_PROGRAM);
+        $room = Room::factory()->create(['name' => 'Rm 101', 'building' => 'Main Building']);
 
         $this->withToken($this->adminToken)
-            ->postJson(self::SECTIONS_URL, $this->buildSectionPayload(self::GRADE_11, ['program_id' => $stemProgram->id, 'name' => 'STEM 11-A', 'room' => 'Rm 101']))
+            ->postJson(self::SECTIONS_URL, $this->buildSectionPayload(self::GRADE_11, ['program_id' => $stemProgram->id, 'name' => 'STEM 11-A', 'room_id' => $room->id]))
             ->assertCreated()
             ->assertJsonPath('section.program', ['id' => $stemProgram->id, 'code' => 'STEM', 'name' => self::STEM_PROGRAM['name']])
             ->assertJsonPath('section.grade_level.stage', GradeLevel::STAGE_SHS)
-            ->assertJsonPath('section.room', 'Rm 101');
+            ->assertJsonPath('section.room', ['id' => $room->id, 'name' => 'Rm 101', 'building' => 'Main Building']);
     }
 
     public function test_admin_creates_college_section_with_program(): void
@@ -163,28 +170,28 @@ class SectionCrudTest extends TestCase
     public function test_create_stores_room_or_null(): void
     {
         $this->withToken($this->adminToken)
-            ->postJson(self::SECTIONS_URL, Arr::except($this->buildSectionPayload(self::GRADE_9, ['name' => 'NoRoom']), 'room'))
+            ->postJson(self::SECTIONS_URL, Arr::except($this->buildSectionPayload(self::GRADE_9, ['name' => 'NoRoom']), 'room_id'))
             ->assertCreated()
             ->assertJsonPath('section.room', null);
+        $room = Room::factory()->create(['name' => 'Rm 101']);
         $this->withToken($this->adminToken)
-            ->postJson(self::SECTIONS_URL, $this->buildSectionPayload(self::GRADE_9, ['name' => 'WithRoom', 'room' => 'Rm 101']))
+            ->postJson(self::SECTIONS_URL, $this->buildSectionPayload(self::GRADE_9, ['name' => 'WithRoom', 'room_id' => $room->id]))
             ->assertCreated()
-            ->assertJsonPath('section.room', 'Rm 101');
+            ->assertJsonPath('section.room', ['id' => $room->id, 'name' => 'Rm 101', 'building' => null]);
         $this->withToken($this->adminToken)
-            ->postJson(self::SECTIONS_URL, $this->buildSectionPayload(self::GRADE_9, ['name' => 'EmptyRoom', 'room' => '']))
+            ->postJson(self::SECTIONS_URL, $this->buildSectionPayload(self::GRADE_9, ['name' => 'EmptyRoom', 'room_id' => '']))
             ->assertCreated()
             ->assertJsonPath('section.room', null);
     }
 
-    public function test_create_trims_name_and_room(): void
+    public function test_create_trims_name(): void
     {
         $this->withToken($this->adminToken)
-            ->postJson(self::SECTIONS_URL, $this->buildSectionPayload(self::GRADE_7, ['name' => '  Rizal  ', 'room' => ' Rm 101 ']))
+            ->postJson(self::SECTIONS_URL, $this->buildSectionPayload(self::GRADE_7, ['name' => '  Rizal  ']))
             ->assertCreated()
-            ->assertJsonPath('section.name', 'Rizal')
-            ->assertJsonPath('section.room', 'Rm 101');
+            ->assertJsonPath('section.name', 'Rizal');
 
-        $this->assertDatabaseHas('sections', ['name' => 'Rizal', 'room' => 'Rm 101']);
+        $this->assertDatabaseHas('sections', ['name' => 'Rizal']);
     }
 
     public function test_create_accepts_numeric_strings_for_ids_and_capacity(): void
@@ -264,8 +271,6 @@ class SectionCrudTest extends TestCase
 
         $this->assertRejectedField([...$validPayload, 'name' => str_repeat('n', 256)], 'name');
         $this->assertRejectedField([...$validPayload, 'name' => ['A']], 'name');
-        $this->assertRejectedField([...$validPayload, 'room' => str_repeat('r', 256)], 'room');
-        $this->assertRejectedField([...$validPayload, 'room' => 123], 'room');
 
         $this->assertDatabaseCount('sections', 0);
     }
@@ -273,10 +278,9 @@ class SectionCrudTest extends TestCase
     public function test_create_accepts_max_length_text(): void
     {
         $this->withToken($this->adminToken)
-            ->postJson(self::SECTIONS_URL, $this->buildSectionPayload(self::GRADE_7, ['name' => str_repeat('n', 255), 'room' => str_repeat('r', 255)]))
+            ->postJson(self::SECTIONS_URL, $this->buildSectionPayload(self::GRADE_7, ['name' => str_repeat('n', 255)]))
             ->assertCreated()
-            ->assertJsonPath('section.name', str_repeat('n', 255))
-            ->assertJsonPath('section.room', str_repeat('r', 255));
+            ->assertJsonPath('section.name', str_repeat('n', 255));
     }
 
     public function test_create_ignores_unvalidated_keys(): void
@@ -288,28 +292,31 @@ class SectionCrudTest extends TestCase
                 'created_at' => '2000-01-01 00:00:00',
                 'enrolled_count' => 5,
                 'term_id' => 1,
+                'room' => 'Rm 999',
             ])
             ->assertCreated()
             ->assertJsonPath('section.enrolled_count', 0);
 
         $this->assertNotSame(777, $createResponse->json('section.id'));
         $this->assertStringStartsNotWith('2000', $createResponse->json('section.created_at'));
+        $this->assertNull($createResponse->json('section.room'));
     }
 
     public function test_admin_updates_section(): void
     {
         $section = $this->createSection(self::GRADE_10, ['name' => 'Access-Post']);
+        $room = Room::factory()->create(['name' => 'Rm 202']);
 
         $updateResponse = $this->withToken($this->adminToken)
-            ->putJson(self::SECTIONS_URL.'/'.$section->id, $this->buildSectionPayload(self::GRADE_10, ['name' => 'Access-Post', 'capacity' => 45, 'room' => 'Rm 202']))
+            ->putJson(self::SECTIONS_URL.'/'.$section->id, $this->buildSectionPayload(self::GRADE_10, ['name' => 'Access-Post', 'capacity' => 45, 'room_id' => $room->id]))
             ->assertOk()
             ->assertJsonPath('section.capacity', 45)
-            ->assertJsonPath('section.room', 'Rm 202');
+            ->assertJsonPath('section.room.name', 'Rm 202');
 
         $this->assertSame(self::SECTION_KEYS, array_keys($updateResponse->json('section')));
         $reloadedSection = $section->fresh();
         $this->assertSame(45, $reloadedSection->capacity);
-        $this->assertSame('Rm 202', $reloadedSection->room);
+        $this->assertSame($room->id, $reloadedSection->room_id);
     }
 
     public function test_update_allows_own_name_in_another_case(): void
@@ -453,12 +460,13 @@ class SectionCrudTest extends TestCase
     {
         $section = $this->createSection(self::GRADE_7, ['name' => 'A']);
         Enrollment::factory()->create(['section_id' => $section->id]);
+        $room = Room::factory()->create(['name' => 'Rm 5']);
 
         $this->withToken($this->adminToken)
-            ->putJson(self::SECTIONS_URL.'/'.$section->id, $this->buildSectionPayload(self::GRADE_7, ['name' => 'B', 'room' => 'Rm 5']))
+            ->putJson(self::SECTIONS_URL.'/'.$section->id, $this->buildSectionPayload(self::GRADE_7, ['name' => 'B', 'room_id' => $room->id]))
             ->assertOk()
             ->assertJsonPath('section.name', 'B')
-            ->assertJsonPath('section.room', 'Rm 5')
+            ->assertJsonPath('section.room.name', 'Rm 5')
             ->assertJsonPath('section.enrolled_count', 1);
     }
 
@@ -502,7 +510,8 @@ class SectionCrudTest extends TestCase
             'grade_level_id' => $this->findGradeLevelId($gradeLevelName),
             'program_id' => null,
             'capacity' => self::DEFAULT_CAPACITY,
-            'room' => null,
+            'room_id' => null,
+            'adviser_id' => null,
             ...$sectionFields,
         ];
     }

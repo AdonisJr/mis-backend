@@ -67,7 +67,7 @@ class DatabaseSeederTest extends TestCase
     {
         $this->seed();
 
-        $this->assertEqualsCanonicalizing(Role::STAFF_ROLES, Role::pluck('name')->all());
+        $this->assertEqualsCanonicalizing(Role::EMPLOYEE_ROLES, Role::pluck('name')->all());
         $adminUser = User::where('email', self::ADMIN_EMAIL)->firstOrFail();
         $this->assertTrue($adminUser->hasAnyRole([Role::ADMIN]));
         $this->assertTrue(Hash::check(self::ADMIN_PASSWORD, $adminUser->password));
@@ -89,7 +89,7 @@ class DatabaseSeederTest extends TestCase
         $this->seed();
 
         $this->assertSame(2, User::count());
-        $this->assertSame(3, Role::count());
+        $this->assertSame(4, Role::count());
         $this->assertSame(2, DB::table('role_user')->count());
     }
 

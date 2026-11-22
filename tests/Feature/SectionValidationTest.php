@@ -336,7 +336,8 @@ class SectionValidationTest extends TestCase
             'grade_level_id' => $this->findGradeLevelId($gradeLevelName),
             'program_id' => null,
             'capacity' => self::DEFAULT_CAPACITY,
-            'room' => null,
+            'room_id' => null,
+            'adviser_id' => null,
             ...$sectionFields,
         ];
     }

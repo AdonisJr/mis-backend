@@ -59,7 +59,7 @@ class DatabaseSeeder extends Seeder
 
     private function seedRoles(): void
     {
-        foreach (Role::STAFF_ROLES as $roleName) {
+        foreach (Role::EMPLOYEE_ROLES as $roleName) {
             Role::firstOrCreate(['name' => $roleName]);
         }
     }

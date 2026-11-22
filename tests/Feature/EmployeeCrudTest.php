@@ -52,7 +52,7 @@ class EmployeeCrudTest extends TestCase
     {
         parent::setUp();
 
-        foreach (Role::STAFF_ROLES as $roleName) {
+        foreach (Role::EMPLOYEE_ROLES as $roleName) {
             Role::firstOrCreate(['name' => $roleName]);
         }
     }
@@ -113,6 +113,14 @@ class EmployeeCrudTest extends TestCase
             ->postJson(self::EMPLOYEES_URL, [...self::VALID_PAYLOAD, 'roles' => [Role::CASHIER]])
             ->assertCreated()
             ->assertJsonPath('employee.roles', [Role::CASHIER]);
+    }
+
+    public function test_create_employee_with_teacher_role(): void
+    {
+        $this->withToken($this->createActingAdminToken())
+            ->postJson(self::EMPLOYEES_URL, [...self::VALID_PAYLOAD, 'roles' => [Role::TEACHER]])
+            ->assertCreated()
+            ->assertJsonPath('employee.roles', [Role::TEACHER]);
     }
 
     public function test_create_without_contact_stores_null(): void
@@ -320,6 +328,20 @@ class EmployeeCrudTest extends TestCase
             ->assertJsonPath('employee.roles', [Role::REGISTRAR]);
 
         $this->assertSame(1, DB::table('role_user')->where('user_id', $targetEmployee->id)->count());
+    }
+
+    public function test_update_adds_teacher_role(): void
+    {
+        $adminToken = $this->createActingAdminToken();
+        $targetEmployee = User::factory()->registrar()->create(['email' => 'target.registrar@school.test']);
+
+        $this->withToken($adminToken)
+            ->putJson(self::EMPLOYEES_URL.'/'.$targetEmployee->id, $this->buildUpdatePayload([
+                'email' => 'target.registrar@school.test',
+                'roles' => [Role::REGISTRAR, Role::TEACHER],
+            ]))
+            ->assertOk()
+            ->assertJsonPath('employee.roles', [Role::REGISTRAR, Role::TEACHER]);
     }
 
     public function test_update_allows_own_unchanged_email(): void

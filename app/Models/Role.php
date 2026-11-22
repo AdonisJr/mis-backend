@@ -18,6 +18,8 @@ class Role extends Model
 
     public const CASHIER = 'cashier';
 
+    public const TEACHER = 'teacher';
+
     public const STAFF_ROLES = [self::ADMIN, self::REGISTRAR, self::CASHIER];
 
     public const REGISTRY_ROLES = [self::ADMIN, self::REGISTRAR];
@@ -25,6 +27,9 @@ class Role extends Model
     public const BILLING_READ_ROLES = [self::ADMIN, self::REGISTRAR, self::CASHIER];
 
     public const PAYMENT_WRITE_ROLES = [self::ADMIN, self::CASHIER];
+
+    // assignable and session roles; route groups keep their own lists so teacher gains no existing access
+    public const EMPLOYEE_ROLES = [self::ADMIN, self::REGISTRAR, self::CASHIER, self::TEACHER];
 
     /**
      * The attributes that are mass assignable.

@@ -38,7 +38,7 @@ class StoreEmployeeRequest extends FormRequest
             'contact' => self::CONTACT_RULES,
             'password' => self::PASSWORD_RULES,
             'roles' => ['required', 'list', 'min:1'],
-            'roles.*' => ['required', 'string', 'distinct', Rule::in(Role::STAFF_ROLES), Rule::exists(Role::class, 'name')],
+            'roles.*' => ['required', 'string', 'distinct', Rule::in(Role::EMPLOYEE_ROLES), Rule::exists(Role::class, 'name')],
         ];
     }
 

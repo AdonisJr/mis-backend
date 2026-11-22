@@ -7,9 +7,12 @@ use App\Http\Requests\ListSectionsRequest;
 use App\Http\Requests\StoreSectionRequest;
 use App\Http\Requests\UpdateSectionRequest;
 use App\Http\Resources\SectionResource;
+use App\Models\SchoolYear;
 use App\Models\Section;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
 class SectionController extends Controller
@@ -20,7 +23,7 @@ class SectionController extends Controller
 
     private const SEARCH_COLUMNS = ['sections.name'];
 
-    private const RELATIONS = ['gradeLevel', 'program'];
+    private const RELATIONS = ['gradeLevel', 'program', 'room', 'adviser'];
 
     public function listSections(ListSectionsRequest $request): JsonResponse
     {
@@ -29,6 +32,8 @@ class SectionController extends Controller
         $sectionQuery->where('sections.school_year_id', $request->validated('school_year_id'));
         $sectionQuery->when($request->filled('grade_level_id'), fn (Builder $query) => $query->where('sections.grade_level_id', $request->validated('grade_level_id')));
         $sectionQuery->when($request->filled('program_id'), fn (Builder $query) => $query->where('sections.program_id', $request->validated('program_id')));
+        $sectionQuery->when($request->filled('room_id'), fn (Builder $query) => $query->where('sections.room_id', $request->validated('room_id')));
+        $sectionQuery->when($request->filled('adviser_id'), fn (Builder $query) => $query->where('sections.adviser_id', $request->validated('adviser_id')));
         $this->applySearch($sectionQuery, (string) $request->validated('search'));
         $sectionPage = $sectionQuery->paginate();
 
@@ -40,7 +45,7 @@ class SectionController extends Controller
 
     public function createSection(StoreSectionRequest $request): JsonResponse
     {
-        $section = Section::create($request->validated())->load(self::RELATIONS)->loadCount($this->buildEnrolledCount(null));
+        $section = DB::transaction(fn () => $this->saveWithinLock($request, new Section), Section::TRANSACTION_ATTEMPTS);
 
         return response()->json([
             'section' => SectionResource::make($section),
@@ -50,8 +55,7 @@ class SectionController extends Controller
     public function updateSection(UpdateSectionRequest $request, int $id): JsonResponse
     {
         $section = Section::findOrFail($id);
-        $section->update($request->validated());
-        $section->load(self::RELATIONS)->loadCount($this->buildEnrolledCount(null));
+        $section = DB::transaction(fn () => $this->saveWithinLock($request, $section), Section::TRANSACTION_ATTEMPTS);
 
         return response()->json([
             'section' => SectionResource::make($section),
@@ -74,6 +78,22 @@ class SectionController extends Controller
     protected function getSearchColumns(): array
     {
         return self::SEARCH_COLUMNS;
+    }
+
+    private function saveWithinLock(StoreSectionRequest $request, Section $section): Section
+    {
+        // every section save for a school year serializes on this row, so two requests cannot give one teacher two sections
+        SchoolYear::whereKey($request->validated('school_year_id'))->lockForUpdate()->first();
+
+        $busySection = $request->findBusyAdviserSection();
+
+        if ($busySection) {
+            throw ValidationException::withMessages(['adviser_id' => $request->formatAdviserBusyMessage($busySection)]);
+        }
+
+        $section->fill($request->validated())->save();
+
+        return $section->load(self::RELATIONS)->loadCount($this->buildEnrolledCount(null));
     }
 
     private function buildEnrolledCount(?int $termId): array
