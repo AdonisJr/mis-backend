@@ -20,6 +20,8 @@ class CurriculumEntryController extends Controller
 {
     public const RELATIONS = ['subject', 'gradeLevel', 'program'];
 
+    public const CLASSES_DELETE_MESSAGE = 'The curriculum entry is used by a class and cannot be deleted.';
+
     private const HOURS_SCALE = 1;
 
     public function listEntries(ListCurriculumRequest $request): JsonResponse
@@ -57,9 +59,26 @@ class CurriculumEntryController extends Controller
 
     public function deleteEntry(int $id): Response
     {
-        CurriculumEntry::findOrFail($id)->delete();
+        $entry = CurriculumEntry::findOrFail($id);
+        $isDeleted = DB::transaction(fn () => $this->deleteUnlessScheduled($entry), CurriculumEntry::TRANSACTION_ATTEMPTS);
+
+        if (! $isDeleted) {
+            return response()->json(['message' => self::CLASSES_DELETE_MESSAGE], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
 
         return response()->noContent();
+    }
+
+    private function deleteUnlessScheduled(CurriculumEntry $entry): bool
+    {
+        // every class save of a school year serializes on this row, so a class cannot be added while the entry is deleted
+        SchoolYear::whereKey($entry->school_year_id)->lockForUpdate()->first();
+
+        if ($entry->schoolClasses()->exists()) {
+            return false;
+        }
+
+        return (bool) $entry->delete();
     }
 
     private function createWithinLock(StoreCurriculumEntryRequest $request): CurriculumEntry

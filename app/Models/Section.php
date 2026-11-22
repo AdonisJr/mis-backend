@@ -90,4 +90,10 @@ class Section extends Model
 
         return (int) ($seatCounts->max() ?? 0);
     }
+
+    /** @return HasMany<SchoolClass, $this> */
+    public function schoolClasses(): HasMany
+    {
+        return $this->hasMany(SchoolClass::class);
+    }
 }

@@ -3,7 +3,6 @@
 namespace App\Http\Resources;
 
 use App\Http\Resources\Concerns\BuildsAssessmentSummaries;
-use App\Models\Room;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -35,10 +34,5 @@ class SectionResource extends JsonResource
             'adviser' => $this->buildUserSummary($this->adviser),
             'enrolled_count' => $this->enrolled_count,
         ];
-    }
-
-    private function buildRoomSummary(?Room $room): ?array
-    {
-        return $room ? ['id' => $room->id, 'name' => $room->name, 'building' => $room->building] : null;
     }
 }
