@@ -21,7 +21,8 @@ return new class extends Migration
             $table->unsignedSmallInteger('sort_order')->nullable();
             $table->timestamps();
             // not unique: a unique index treats NULL program_id/term_number as distinct, so the requests and the locked re-check enforce the key rule
-            $table->index(['school_year_id', 'grade_level_id', 'program_id', 'term_number']);
+            // explicit name: the generated one is 77 chars, over MySQL's 64-char identifier limit
+            $table->index(['school_year_id', 'grade_level_id', 'program_id', 'term_number'], 'curriculum_entries_group_index');
         });
     }
 
