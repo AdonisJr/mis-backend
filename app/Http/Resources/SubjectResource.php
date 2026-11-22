@@ -21,6 +21,7 @@ class SubjectResource extends JsonResource
             'type' => $this->type,
             'weekly_hours' => $this->weekly_hours,
             'description' => $this->description,
+            'weight_group' => $this->weight_group,
             'is_active' => $this->is_active,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

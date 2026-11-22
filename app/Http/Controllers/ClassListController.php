@@ -24,8 +24,6 @@ class ClassListController extends Controller
 {
     public const CLASS_NOT_PERMITTED_MESSAGE = 'You can only view class lists of classes you teach or of the section you advise.';
 
-    private const RELATIONS = ['schoolYear', 'section.gradeLevel', 'section.program', 'curriculumEntry.subject', 'teacher', 'meetings.room'];
-
     public function listMyClasses(ListTeacherClassesRequest $request): JsonResponse
     {
         $teacher = User::findOrFail($request->resolveTeacherId());
@@ -67,7 +65,7 @@ class ClassListController extends Controller
 
     public function showClassRoster(Request $request, int $id): JsonResponse
     {
-        $schoolClass = SchoolClass::with(self::RELATIONS)->findOrFail($id);
+        $schoolClass = SchoolClass::with(SchoolClass::CLASS_LIST_RELATIONS)->findOrFail($id);
         $access = new ClassListAccess($request->user());
 
         if (! $access->canReadClass($schoolClass)) {
@@ -98,7 +96,7 @@ class ClassListController extends Controller
             ->where('classes.teacher_id', $teacher->id)
             ->where('classes.school_year_id', $request->validated('school_year_id'))
             ->when($request->filled('term_number'), fn (Builder $query) => $query->where(fn (Builder $termQuery) => $termQuery->whereNull('classes.term_number')->orWhere('classes.term_number', $termNumber)))
-            ->with(self::RELATIONS)
+            ->with(SchoolClass::CLASS_LIST_RELATIONS)
             ->orderBy('grade_levels.sort_order')
             ->orderBy('sections.name')
             ->orderBy('sections.id')

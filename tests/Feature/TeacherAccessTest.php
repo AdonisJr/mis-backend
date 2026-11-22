@@ -24,19 +24,30 @@ class TeacherAccessTest extends TestCase
 
     private const SESSION_URIS = ['api/mis/login', 'api/mis/user', 'api/mis/logout'];
 
-    // GET reads a teacher reaches besides the session routes (mis-24)
-    private const TEACHER_READ_URIS = [
-        'api/mis/school-years',
-        'api/mis/school-years/get-active',
-        'api/mis/school-years/{id}/terms',
-        'api/mis/terms/get-active',
-        'api/mis/my-classes',
-        'api/mis/my-advisory-section',
-        'api/mis/classes/{id}/roster',
+    // routes a teacher reaches besides the session ones: the MIS-24 reads, then the MIS-25 grading routes (class writes are scoped to the class teacher)
+    private const TEACHER_ROUTES = [
+        'GET api/mis/school-years',
+        'GET api/mis/school-years/get-active',
+        'GET api/mis/school-years/{id}/terms',
+        'GET api/mis/terms/get-active',
+        'GET api/mis/my-classes',
+        'GET api/mis/my-advisory-section',
+        'GET api/mis/classes/{id}/roster',
+        'GET api/mis/classes/{id}/quarters/{quarter}/record',
+        'GET api/mis/classes/{id}/quarters/{quarter}/activities',
+        'POST api/mis/classes/{id}/quarters/{quarter}/activities',
+        'PUT api/mis/classes/{id}/quarters/{quarter}/activities/{activityId}',
+        'DELETE api/mis/classes/{id}/quarters/{quarter}/activities/{activityId}',
+        'PUT api/mis/classes/{id}/quarters/{quarter}/scores',
+        'POST api/mis/classes/{id}/quarters/{quarter}/submit',
+        'GET api/mis/students/{id}/report-card',
+        'GET api/mis/sections/{id}/report-cards',
     ];
 
+    private const PLACEHOLDERS = ['{id}', '{quarter}', '{activityId}'];
+
     // every api/mis route except the session ones and the teacher reads; a new route that teacher can reach fails the 403 loop first
-    private const CHECKED_ROUTE_COUNT = 112;
+    private const CHECKED_ROUTE_COUNT = 113;
 
     protected function setUp(): void
     {
@@ -68,11 +79,11 @@ class TeacherAccessTest extends TestCase
         $checkedRoutes = collect(Route::getRoutes()->getRoutes())
             ->filter(fn ($route) => str_starts_with($route->uri(), 'api/mis/'))
             ->reject(fn ($route) => in_array($route->uri(), self::SESSION_URIS, true))
-            ->reject(fn ($route) => $this->isTeacherRead($route));
+            ->reject(fn ($route) => $this->isTeacherRoute($route));
 
         foreach ($checkedRoutes as $route) {
             $this->withToken($teacherToken)
-                ->json($route->methods()[0], '/'.str_replace('{id}', '1', $route->uri()))
+                ->json($route->methods()[0], '/'.str_replace(self::PLACEHOLDERS, '1', $route->uri()))
                 ->assertForbidden()
                 ->assertExactJson(self::FORBIDDEN_BODY);
         }
@@ -90,7 +101,7 @@ class TeacherAccessTest extends TestCase
         $this->withToken($teacherToken)->getJson('/api/mis/terms/get-active')->assertOk();
     }
 
-    public function test_teacher_reachable_routes_are_get_only(): void
+    public function test_teacher_reachable_routes_match_the_list(): void
     {
         // the school-year list URI is shared with its POST create route, so reachability is read from the role middleware
         $teacherRoutes = collect(Route::getRoutes()->getRoutes())
@@ -98,10 +109,10 @@ class TeacherAccessTest extends TestCase
             ->reject(fn ($route) => in_array($route->uri(), self::SESSION_URIS, true))
             ->filter(fn ($route) => collect($route->gatherMiddleware())->contains(fn ($middleware) => is_string($middleware) && str_ends_with($middleware, ','.Role::TEACHER)));
 
-        $this->assertCount(count(self::TEACHER_READ_URIS), $teacherRoutes);
+        $this->assertCount(count(self::TEACHER_ROUTES), $teacherRoutes);
 
         foreach ($teacherRoutes as $route) {
-            $this->assertSame(['GET', 'HEAD'], $route->methods());
+            $this->assertContains($route->methods()[0].' '.$route->uri(), self::TEACHER_ROUTES);
         }
     }
 
@@ -115,8 +126,8 @@ class TeacherAccessTest extends TestCase
         $this->withToken($mixedToken)->getJson('/api/mis/employees')->assertForbidden()->assertExactJson(self::FORBIDDEN_BODY);
     }
 
-    private function isTeacherRead($route): bool
+    private function isTeacherRoute($route): bool
     {
-        return $route->methods()[0] === 'GET' && in_array($route->uri(), self::TEACHER_READ_URIS, true);
+        return in_array($route->methods()[0].' '.$route->uri(), self::TEACHER_ROUTES, true);
     }
 }

@@ -4,6 +4,8 @@ use App\Http\Controllers\AssessmentCandidateController;
 use App\Http\Controllers\AssessmentController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClassListController;
+use App\Http\Controllers\ClassQuarterController;
+use App\Http\Controllers\ClassRecordController;
 use App\Http\Controllers\CurriculumCopyController;
 use App\Http\Controllers\CurriculumEntryController;
 use App\Http\Controllers\DiscountTypeController;
@@ -13,12 +15,15 @@ use App\Http\Controllers\FeeItemController;
 use App\Http\Controllers\FeeScheduleController;
 use App\Http\Controllers\FeeScheduleCopyController;
 use App\Http\Controllers\GradeLevelController;
+use App\Http\Controllers\GradingActivityController;
+use App\Http\Controllers\GradingScoreController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PaymentHoldController;
 use App\Http\Controllers\PaymentPlanController;
 use App\Http\Controllers\PaymentPlanCopyController;
 use App\Http\Controllers\ProgramController;
 use App\Http\Controllers\PromissoryNoteController;
+use App\Http\Controllers\ReportCardController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\SchoolClassController;
 use App\Http\Controllers\SchoolYearController;
@@ -49,6 +54,15 @@ Route::prefix('mis')->group(function () {
         Route::get('/my-classes', [ClassListController::class, 'listMyClasses']);
         Route::get('/my-advisory-section', [ClassListController::class, 'showAdvisorySection']);
         Route::get('/classes/{id}/roster', [ClassListController::class, 'showClassRoster'])->whereNumber('id');
+        Route::get('/classes/{id}/quarters/{quarter}/record', [ClassRecordController::class, 'showClassRecord'])->whereNumber(['id', 'quarter']);
+        Route::get('/classes/{id}/quarters/{quarter}/activities', [GradingActivityController::class, 'listActivities'])->whereNumber(['id', 'quarter']);
+        Route::post('/classes/{id}/quarters/{quarter}/activities', [GradingActivityController::class, 'createActivity'])->whereNumber(['id', 'quarter']);
+        Route::put('/classes/{id}/quarters/{quarter}/activities/{activityId}', [GradingActivityController::class, 'updateActivity'])->whereNumber(['id', 'quarter', 'activityId']);
+        Route::delete('/classes/{id}/quarters/{quarter}/activities/{activityId}', [GradingActivityController::class, 'deleteActivity'])->whereNumber(['id', 'quarter', 'activityId']);
+        Route::put('/classes/{id}/quarters/{quarter}/scores', [GradingScoreController::class, 'saveScores'])->whereNumber(['id', 'quarter']);
+        Route::post('/classes/{id}/quarters/{quarter}/submit', [ClassQuarterController::class, 'submitQuarter'])->whereNumber(['id', 'quarter']);
+        Route::get('/students/{id}/report-card', [ReportCardController::class, 'showReportCard'])->whereNumber('id');
+        Route::get('/sections/{id}/report-cards', [ReportCardController::class, 'listSectionReportCards'])->whereNumber('id');
     });
 
     Route::middleware(['auth:sanctum', 'role:'.implode(',', Role::STAFF_ROLES)])->group(function () {
@@ -88,6 +102,7 @@ Route::prefix('mis')->group(function () {
         Route::post('/classes', [SchoolClassController::class, 'createClass']);
         Route::put('/classes/{id}', [SchoolClassController::class, 'updateClass'])->whereNumber('id');
         Route::delete('/classes/{id}', [SchoolClassController::class, 'deleteClass'])->whereNumber('id');
+        Route::post('/classes/{id}/quarters/{quarter}/reopen', [ClassQuarterController::class, 'reopenQuarter'])->whereNumber(['id', 'quarter']);
         Route::get('/sections/{id}/timetable', [TimetableController::class, 'showSectionTimetable'])->whereNumber('id');
         Route::get('/teachers/{id}/timetable', [TimetableController::class, 'listTeacherTimetable'])->whereNumber('id');
         Route::get('/rooms/{id}/timetable', [TimetableController::class, 'listRoomTimetable'])->whereNumber('id');
