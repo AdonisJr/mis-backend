@@ -15,7 +15,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class SchoolClassController extends Controller
 {
-    public const RELATIONS = ['section', 'curriculumEntry.subject', 'teacher', 'meetings.room'];
+    public const RELATIONS = SchoolClass::RESOURCE_RELATIONS;
 
     public function showClass(int $id): JsonResponse
     {

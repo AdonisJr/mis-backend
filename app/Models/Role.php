@@ -28,8 +28,11 @@ class Role extends Model
 
     public const PAYMENT_WRITE_ROLES = [self::ADMIN, self::CASHIER];
 
-    // assignable and session roles; route groups keep their own lists so teacher gains no existing access
+    // assignable and session roles; the session group also holds the school-year and term picker reads (mis-24); other groups keep their own lists
     public const EMPLOYEE_ROLES = [self::ADMIN, self::REGISTRAR, self::CASHIER, self::TEACHER];
+
+    // cashier has no academic reads
+    public const CLASS_LIST_ROLES = [self::ADMIN, self::REGISTRAR, self::TEACHER];
 
     /**
      * The attributes that are mass assignable.

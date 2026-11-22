@@ -84,4 +84,10 @@ class User extends Authenticatable
     {
         return $this->hasMany(SchoolClass::class, 'teacher_id');
     }
+
+    /** @return HasMany<Section, $this> */
+    public function advisedSections(): HasMany
+    {
+        return $this->hasMany(Section::class, 'adviser_id');
+    }
 }

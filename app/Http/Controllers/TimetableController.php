@@ -7,7 +7,6 @@ use App\Http\Requests\ShowSectionTimetableRequest;
 use App\Http\Resources\SectionTimetableRowResource;
 use App\Http\Resources\TimetableMeetingResource;
 use App\Models\ClassMeeting;
-use App\Models\CurriculumEntry;
 use App\Models\Room;
 use App\Models\Section;
 use App\Models\User;
@@ -21,17 +20,7 @@ class TimetableController extends Controller
         $section = Section::with('gradeLevel')->findOrFail($id);
         $termNumber = $request->filled('term_number') ? (int) $request->validated('term_number') : null;
 
-        $curriculumEntries = CurriculumEntry::query()
-            ->orderedForList()
-            ->where('curriculum_entries.school_year_id', $section->school_year_id)
-            ->where('curriculum_entries.grade_level_id', $section->grade_level_id)
-            ->where('curriculum_entries.program_id', $section->program_id)
-            ->where('curriculum_entries.term_number', $termNumber)
-            ->with([
-                'subject',
-                'schoolClasses' => fn ($classQuery) => $classQuery->where('section_id', $section->id)->with(SchoolClassController::RELATIONS),
-            ])
-            ->get();
+        $curriculumEntries = $section->fetchTimetableEntries($termNumber);
 
         return response()->json([
             'section' => ['id' => $section->id, 'name' => $section->name, 'stage' => $section->gradeLevel->stage],

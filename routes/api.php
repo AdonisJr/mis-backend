@@ -3,6 +3,7 @@
 use App\Http\Controllers\AssessmentCandidateController;
 use App\Http\Controllers\AssessmentController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ClassListController;
 use App\Http\Controllers\CurriculumCopyController;
 use App\Http\Controllers\CurriculumEntryController;
 use App\Http\Controllers\DiscountTypeController;
@@ -38,15 +39,21 @@ Route::prefix('mis')->group(function () {
     Route::middleware(['auth:sanctum', 'role:'.implode(',', Role::EMPLOYEE_ROLES)])->group(function () {
         Route::get('/user', [AuthController::class, 'fetchCurrentUser']);
         Route::post('/logout', [AuthController::class, 'logout']);
+        Route::get('/school-years/get-active', [SchoolYearController::class, 'fetchActiveSchoolYear']);
+        Route::get('/school-years', [SchoolYearController::class, 'listSchoolYears']);
+        Route::get('/school-years/{id}/terms', [TermController::class, 'listTerms'])->whereNumber('id');
+        Route::get('/terms/get-active', [TermController::class, 'fetchActiveTerm']);
+    });
+
+    Route::middleware(['auth:sanctum', 'role:'.implode(',', Role::CLASS_LIST_ROLES)])->group(function () {
+        Route::get('/my-classes', [ClassListController::class, 'listMyClasses']);
+        Route::get('/my-advisory-section', [ClassListController::class, 'showAdvisorySection']);
+        Route::get('/classes/{id}/roster', [ClassListController::class, 'showClassRoster'])->whereNumber('id');
     });
 
     Route::middleware(['auth:sanctum', 'role:'.implode(',', Role::STAFF_ROLES)])->group(function () {
-        Route::get('/school-years/get-active', [SchoolYearController::class, 'fetchActiveSchoolYear']);
-        Route::get('/school-years', [SchoolYearController::class, 'listSchoolYears']);
         Route::get('/grade-levels', [GradeLevelController::class, 'listGradeLevels']);
         Route::get('/programs', [ProgramController::class, 'listPrograms']);
-        Route::get('/school-years/{id}/terms', [TermController::class, 'listTerms'])->whereNumber('id');
-        Route::get('/terms/get-active', [TermController::class, 'fetchActiveTerm']);
         Route::get('/subjects', [SubjectController::class, 'listSubjects']);
         Route::get('/subjects/active', [SubjectController::class, 'listActiveSubjects']);
         Route::get('/curriculum-entries', [CurriculumEntryController::class, 'listEntries']);

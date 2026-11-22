@@ -22,6 +22,8 @@ class SchoolClass extends Model
 
     public const HOURS_OVER = 'over';
 
+    public const RESOURCE_RELATIONS = ['section', 'curriculumEntry.subject', 'teacher', 'meetings.room'];
+
     private const MINUTES_PER_HOUR = 60;
 
     // the model cannot be named Class (reserved word); the table keeps the domain name
