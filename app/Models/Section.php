@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Database\Factories\SectionFactory;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -95,5 +97,31 @@ class Section extends Model
     public function schoolClasses(): HasMany
     {
         return $this->hasMany(SchoolClass::class);
+    }
+
+    /** @return Collection<int, CurriculumEntry> */
+    public function fetchTimetableEntries(?int $termNumber): Collection
+    {
+        return CurriculumEntry::query()
+            ->orderedForList()
+            ->where('curriculum_entries.school_year_id', $this->school_year_id)
+            ->where('curriculum_entries.grade_level_id', $this->grade_level_id)
+            ->where('curriculum_entries.program_id', $this->program_id)
+            ->where('curriculum_entries.term_number', $termNumber)
+            ->with([
+                'subject',
+                'schoolClasses' => fn ($classQuery) => $classQuery->where('section_id', $this->id)->with(SchoolClass::RESOURCE_RELATIONS),
+            ])
+            ->get();
+    }
+
+    /** @return array<string, \Closure(Builder): mixed> */
+    public static function buildEnrolledCount(?int $termId): array
+    {
+        // a JHS section has no term, so its whole-year rows count for any term; without a term every enrolled row counts
+        return ['enrollments as enrolled_count' => fn (Builder $enrollmentQuery) => $enrollmentQuery
+            ->enrolled()
+            ->when($termId, fn (Builder $countQuery) => $countQuery->where(fn (Builder $termQuery) => $termQuery->whereNull('enrollments.term_id')->orWhere('enrollments.term_id', $termId))),
+        ];
     }
 }

@@ -31,6 +31,10 @@ class Enrollment extends Model
         self::STATUS_COMPLETED,
     ];
 
+    public const LISTED_STATUSES = [self::STATUS_ENROLLED, self::STATUS_COMPLETED];
+
+    public const LEFT_STATUSES = [self::STATUS_MOVED, self::STATUS_DROPPED, self::STATUS_TRANSFERRED];
+
     public const CLOSED_MESSAGE = 'Only an enrolled record can be changed.';
 
     /**

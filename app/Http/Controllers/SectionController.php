@@ -25,12 +25,12 @@ class SectionController extends Controller
 
     private const SEARCH_COLUMNS = ['sections.name'];
 
-    private const RELATIONS = ['gradeLevel', 'program', 'room', 'adviser'];
+    public const RELATIONS = ['gradeLevel', 'program', 'room', 'adviser'];
 
     public function listSections(ListSectionsRequest $request): JsonResponse
     {
         $sectionQuery = $this->buildOrderedSectionQuery();
-        $sectionQuery->withCount($this->buildEnrolledCount($request->validated('term_id')));
+        $sectionQuery->withCount(Section::buildEnrolledCount($request->validated('term_id')));
         $sectionQuery->where('sections.school_year_id', $request->validated('school_year_id'));
         $sectionQuery->when($request->filled('grade_level_id'), fn (Builder $query) => $query->where('sections.grade_level_id', $request->validated('grade_level_id')));
         $sectionQuery->when($request->filled('program_id'), fn (Builder $query) => $query->where('sections.program_id', $request->validated('program_id')));
@@ -111,16 +111,7 @@ class SectionController extends Controller
 
         $section->fill($request->validated())->save();
 
-        return $section->load(self::RELATIONS)->loadCount($this->buildEnrolledCount(null));
-    }
-
-    private function buildEnrolledCount(?int $termId): array
-    {
-        // a JHS section has no term, so its whole-year rows count for any term; without a term every enrolled row counts
-        return ['enrollments as enrolled_count' => fn (Builder $enrollmentQuery) => $enrollmentQuery
-            ->enrolled()
-            ->when($termId, fn (Builder $countQuery) => $countQuery->where(fn (Builder $termQuery) => $termQuery->whereNull('enrollments.term_id')->orWhere('enrollments.term_id', $termId))),
-        ];
+        return $section->load(self::RELATIONS)->loadCount(Section::buildEnrolledCount(null));
     }
 
     private function buildOrderedSectionQuery(): Builder
