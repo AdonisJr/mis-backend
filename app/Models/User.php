@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -69,5 +70,11 @@ class User extends Authenticatable
     public function hasRole(string $roleName): bool
     {
         return $this->roles->contains('name', $roleName);
+    }
+
+    /** @param Builder<User> $query */
+    public function scopeActiveTeachers(Builder $query): void
+    {
+        $query->where('is_active', true)->whereHas('roles', fn (Builder $roleQuery) => $roleQuery->where('name', Role::TEACHER));
     }
 }

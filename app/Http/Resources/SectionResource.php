@@ -2,11 +2,15 @@
 
 namespace App\Http\Resources;
 
+use App\Http\Resources\Concerns\BuildsAssessmentSummaries;
+use App\Models\Room;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class SectionResource extends JsonResource
 {
+    use BuildsAssessmentSummaries;
+
     /**
      * Transform the resource into an array.
      *
@@ -21,26 +25,20 @@ class SectionResource extends JsonResource
             'program_id' => $this->program_id,
             'name' => $this->name,
             'capacity' => $this->capacity,
-            'room' => $this->room,
+            'room_id' => $this->room_id,
+            'adviser_id' => $this->adviser_id,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
-            'grade_level' => $this->buildGradeLevelSummary(),
-            'program' => $this->buildProgramSummary(),
+            'grade_level' => $this->buildGradeLevelSummary($this->gradeLevel),
+            'program' => $this->buildProgramSummary($this->program),
+            'room' => $this->buildRoomSummary($this->room),
+            'adviser' => $this->buildUserSummary($this->adviser),
             'enrolled_count' => $this->enrolled_count,
         ];
     }
 
-    private function buildGradeLevelSummary(): array
+    private function buildRoomSummary(?Room $room): ?array
     {
-        return ['id' => $this->gradeLevel->id, 'name' => $this->gradeLevel->name, 'stage' => $this->gradeLevel->stage];
-    }
-
-    private function buildProgramSummary(): ?array
-    {
-        if (! $this->program) {
-            return null;
-        }
-
-        return ['id' => $this->program->id, 'code' => $this->program->code, 'name' => $this->program->name];
+        return $room ? ['id' => $room->id, 'name' => $room->name, 'building' => $room->building] : null;
     }
 }

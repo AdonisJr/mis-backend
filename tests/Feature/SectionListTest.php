@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Enrollment;
 use App\Models\GradeLevel;
 use App\Models\Program;
+use App\Models\Room;
 use App\Models\SchoolYear;
 use App\Models\Section;
 use App\Models\Term;
@@ -46,7 +47,7 @@ class SectionListTest extends TestCase
 
     private const FIRST_YEAR_COLLEGE = '1st Year College';
 
-    private const SECTION_KEYS = ['id', 'school_year_id', 'grade_level_id', 'program_id', 'name', 'capacity', 'room', 'created_at', 'updated_at', 'grade_level', 'program', 'enrolled_count'];
+    private const SECTION_KEYS = ['id', 'school_year_id', 'grade_level_id', 'program_id', 'name', 'capacity', 'room_id', 'adviser_id', 'created_at', 'updated_at', 'grade_level', 'program', 'room', 'adviser', 'enrolled_count'];
 
     private SchoolYear $schoolYear;
 
@@ -99,7 +100,8 @@ class SectionListTest extends TestCase
     public function test_list_returns_exact_section_shape(): void
     {
         $stemProgram = Program::factory()->create(self::STEM_PROGRAM);
-        $stemSection = $this->createSection(self::GRADE_11, ['program_id' => $stemProgram->id, 'name' => 'STEM 11-A', 'room' => 'Rm 101'])->fresh();
+        $room = Room::factory()->create(['name' => 'Rm 101', 'building' => 'Main Building']);
+        $stemSection = $this->createSection(self::GRADE_11, ['program_id' => $stemProgram->id, 'name' => 'STEM 11-A', 'room_id' => $room->id])->fresh();
         $jhsSection = $this->createSection(self::GRADE_7, ['name' => 'A'])->fresh();
 
         $listResponse = $this->fetchSectionList([])
@@ -110,12 +112,16 @@ class SectionListTest extends TestCase
                         ...$this->buildSectionColumns($jhsSection),
                         'grade_level' => ['id' => $jhsSection->grade_level_id, 'name' => self::GRADE_7, 'stage' => GradeLevel::STAGE_JHS],
                         'program' => null,
+                        'room' => null,
+                        'adviser' => null,
                         'enrolled_count' => 0,
                     ],
                     [
                         ...$this->buildSectionColumns($stemSection),
                         'grade_level' => ['id' => $stemSection->grade_level_id, 'name' => self::GRADE_11, 'stage' => GradeLevel::STAGE_SHS],
                         'program' => ['id' => $stemProgram->id, 'code' => 'STEM', 'name' => self::STEM_PROGRAM['name']],
+                        'room' => ['id' => $room->id, 'name' => 'Rm 101', 'building' => 'Main Building'],
+                        'adviser' => null,
                         'enrolled_count' => 0,
                     ],
                 ],
@@ -384,7 +390,8 @@ class SectionListTest extends TestCase
             'program_id' => $section->program_id,
             'name' => $section->name,
             'capacity' => $section->capacity,
-            'room' => $section->room,
+            'room_id' => $section->room_id,
+            'adviser_id' => $section->adviser_id,
             'created_at' => $section->created_at->toJSON(),
             'updated_at' => $section->updated_at->toJSON(),
         ];
@@ -401,7 +408,8 @@ class SectionListTest extends TestCase
             'grade_level_id' => $this->findGradeLevelId($gradeLevelName),
             'program_id' => null,
             'capacity' => self::DEFAULT_CAPACITY,
-            'room' => null,
+            'room_id' => null,
+            'adviser_id' => null,
             ...$sectionFields,
         ];
     }

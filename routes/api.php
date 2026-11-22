@@ -18,12 +18,14 @@ use App\Http\Controllers\PaymentPlanController;
 use App\Http\Controllers\PaymentPlanCopyController;
 use App\Http\Controllers\ProgramController;
 use App\Http\Controllers\PromissoryNoteController;
+use App\Http\Controllers\RoomController;
 use App\Http\Controllers\SchoolYearController;
 use App\Http\Controllers\SectionController;
 use App\Http\Controllers\SectionRolloverController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\StudentDiscountController;
 use App\Http\Controllers\SubjectController;
+use App\Http\Controllers\TeacherController;
 use App\Http\Controllers\TermController;
 use App\Models\Role;
 use Illuminate\Support\Facades\Route;
@@ -31,9 +33,12 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('mis')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
 
-    Route::middleware(['auth:sanctum', 'role:'.implode(',', Role::STAFF_ROLES)])->group(function () {
+    Route::middleware(['auth:sanctum', 'role:'.implode(',', Role::EMPLOYEE_ROLES)])->group(function () {
         Route::get('/user', [AuthController::class, 'fetchCurrentUser']);
         Route::post('/logout', [AuthController::class, 'logout']);
+    });
+
+    Route::middleware(['auth:sanctum', 'role:'.implode(',', Role::STAFF_ROLES)])->group(function () {
         Route::get('/school-years/get-active', [SchoolYearController::class, 'fetchActiveSchoolYear']);
         Route::get('/school-years', [SchoolYearController::class, 'listSchoolYears']);
         Route::get('/grade-levels', [GradeLevelController::class, 'listGradeLevels']);
@@ -66,6 +71,10 @@ Route::prefix('mis')->group(function () {
         Route::post('/assessments/{id}/reassess', [AssessmentController::class, 'reassessAssessment'])->whereNumber('id');
         Route::get('/payment-plans', [PaymentPlanController::class, 'listPaymentPlans']);
         Route::get('/payment-plans/{id}', [PaymentPlanController::class, 'showPaymentPlan'])->whereNumber('id');
+        Route::get('/rooms', [RoomController::class, 'listRooms']);
+        Route::get('/rooms/active', [RoomController::class, 'listActiveRooms']);
+        Route::get('/teachers', [TeacherController::class, 'listTeachers']);
+        Route::get('/teachers/active', [TeacherController::class, 'listActiveTeachers']);
         Route::post('/subjects', [SubjectController::class, 'createSubject']);
         Route::put('/subjects/{id}', [SubjectController::class, 'updateSubject'])->whereNumber('id');
         Route::put('/subjects/{id}/deactivate', [SubjectController::class, 'deactivateSubject'])->whereNumber('id');
@@ -118,6 +127,10 @@ Route::prefix('mis')->group(function () {
         Route::post('/sections', [SectionController::class, 'createSection']);
         Route::put('/sections/{id}', [SectionController::class, 'updateSection'])->whereNumber('id');
         Route::delete('/sections/{id}', [SectionController::class, 'deleteSection'])->whereNumber('id');
+        Route::post('/rooms', [RoomController::class, 'createRoom']);
+        Route::put('/rooms/{id}', [RoomController::class, 'updateRoom'])->whereNumber('id');
+        Route::put('/rooms/{id}/deactivate', [RoomController::class, 'deactivateRoom'])->whereNumber('id');
+        Route::put('/rooms/{id}/reactivate', [RoomController::class, 'reactivateRoom'])->whereNumber('id');
         Route::get('/fee-items', [FeeItemController::class, 'listFeeItems']);
         Route::post('/fee-items', [FeeItemController::class, 'createFeeItem']);
         Route::put('/fee-items/{id}', [FeeItemController::class, 'updateFeeItem'])->whereNumber('id');

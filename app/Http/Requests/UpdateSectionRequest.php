@@ -3,7 +3,9 @@
 namespace App\Http\Requests;
 
 use App\Models\Program;
+use App\Models\Room;
 use App\Models\Section;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\Validator;
 
@@ -31,6 +33,22 @@ class UpdateSectionRequest extends StoreSectionRequest
     {
         // a section may keep the inactive program it already has; a missing id counts as changed and the controller answers 404
         return Section::find($this->route('id'))?->program_id !== $program->id;
+    }
+
+    protected function isRoomChanged(Room $room): bool
+    {
+        return Section::find($this->route('id'))?->room_id !== $room->id;
+    }
+
+    protected function isAdviserChanged(User $adviser): bool
+    {
+        // an unchanged adviser is kept even if later deactivated or no longer a teacher
+        return Section::find($this->route('id'))?->adviser_id !== $adviser->id;
+    }
+
+    protected function buildSameYearAdviserQuery(): Builder
+    {
+        return parent::buildSameYearAdviserQuery()->whereKeyNot($this->route('id'));
     }
 
     protected function buildSameGroupQuery(): Builder

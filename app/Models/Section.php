@@ -13,6 +13,8 @@ class Section extends Model
     /** @use HasFactory<SectionFactory> */
     use HasFactory;
 
+    public const TRANSACTION_ATTEMPTS = 3;
+
     /**
      * The attributes that are mass assignable.
      *
@@ -24,7 +26,8 @@ class Section extends Model
         'program_id',
         'name',
         'capacity',
-        'room',
+        'room_id',
+        'adviser_id',
     ];
 
     /**
@@ -40,6 +43,8 @@ class Section extends Model
             'grade_level_id' => 'integer',
             'program_id' => 'integer',
             'capacity' => 'integer',
+            'room_id' => 'integer',
+            'adviser_id' => 'integer',
         ];
     }
 
@@ -59,6 +64,18 @@ class Section extends Model
     public function program(): BelongsTo
     {
         return $this->belongsTo(Program::class);
+    }
+
+    /** @return BelongsTo<Room, $this> */
+    public function room(): BelongsTo
+    {
+        return $this->belongsTo(Room::class);
+    }
+
+    /** @return BelongsTo<User, $this> */
+    public function adviser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'adviser_id');
     }
 
     /** @return HasMany<Enrollment, $this> */

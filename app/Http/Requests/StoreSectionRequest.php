@@ -4,8 +4,10 @@ namespace App\Http\Requests;
 
 use App\Models\GradeLevel;
 use App\Models\Program;
+use App\Models\Room;
 use App\Models\SchoolYear;
 use App\Models\Section;
+use App\Models\User;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Http\FormRequest;
@@ -30,9 +32,13 @@ class StoreSectionRequest extends FormRequest
 
     public const NAME_TAKEN_MESSAGE = 'The name has already been taken for this school year, grade level and program.';
 
-    private const NAME_RULES = ['required', 'string', 'max:255'];
+    public const ROOM_INACTIVE_MESSAGE = 'The selected room is inactive.';
 
-    private const ROOM_RULES = ['nullable', 'string', 'max:255'];
+    public const ADVISER_NOT_TEACHER_MESSAGE = 'The adviser must be an active employee with the teacher role.';
+
+    public const ADVISER_BUSY_MESSAGE = 'This teacher already advises section %s in this school year.';
+
+    private const NAME_RULES = ['required', 'string', 'max:255'];
 
     /**
      * Determine if the user is authorized to make this request.
@@ -61,7 +67,8 @@ class StoreSectionRequest extends FormRequest
             'program_id' => self::buildIdRules('nullable', Program::class),
             'name' => self::NAME_RULES,
             'capacity' => ['bail', 'required', 'integer', self::WHOLE_NUMBER_RULE, 'min:1', 'max:'.self::CAPACITY_MAX],
-            'room' => self::ROOM_RULES,
+            'room_id' => self::buildIdRules('nullable', Room::class),
+            'adviser_id' => self::buildIdRules('nullable', User::class),
         ];
     }
 
@@ -73,12 +80,44 @@ class StoreSectionRequest extends FormRequest
         return [
             fn (Validator $validator) => $this->rejectUnfitProgram($validator),
             fn (Validator $validator) => $this->rejectTakenName($validator),
+            fn (Validator $validator) => $this->rejectInactiveRoom($validator),
+            fn (Validator $validator) => $this->rejectNonTeacherAdviser($validator),
+            fn (Validator $validator) => $this->rejectBusyAdviser($validator),
         ];
     }
 
     protected function isProgramChanged(Program $program): bool
     {
         return true;
+    }
+
+    protected function isRoomChanged(Room $room): bool
+    {
+        return true;
+    }
+
+    protected function isAdviserChanged(User $adviser): bool
+    {
+        return true;
+    }
+
+    protected function buildSameYearAdviserQuery(): Builder
+    {
+        return Section::query()->where('school_year_id', $this->input('school_year_id'))->where('adviser_id', $this->input('adviser_id'));
+    }
+
+    public function findBusyAdviserSection(): ?Section
+    {
+        if (! $this->filled('adviser_id')) {
+            return null;
+        }
+
+        return $this->buildSameYearAdviserQuery()->orderBy('id')->first();
+    }
+
+    public function formatAdviserBusyMessage(Section $busySection): string
+    {
+        return sprintf(self::ADVISER_BUSY_MESSAGE, $busySection->name);
     }
 
     protected function buildSameGroupQuery(): Builder
@@ -138,5 +177,52 @@ class StoreSectionRequest extends FormRequest
         }
 
         $validator->errors()->add('name', self::NAME_TAKEN_MESSAGE);
+    }
+
+    private function rejectInactiveRoom(Validator $validator): void
+    {
+        if ($validator->errors()->has('room_id') || ! $this->filled('room_id')) {
+            return;
+        }
+
+        $room = Room::findOrFail($this->input('room_id'));
+
+        if ($room->is_active || ! $this->isRoomChanged($room)) {
+            return;
+        }
+
+        $validator->errors()->add('room_id', self::ROOM_INACTIVE_MESSAGE);
+    }
+
+    private function rejectNonTeacherAdviser(Validator $validator): void
+    {
+        if ($validator->errors()->has('adviser_id') || ! $this->filled('adviser_id')) {
+            return;
+        }
+
+        if (! $this->isAdviserChanged(User::findOrFail($this->input('adviser_id')))) {
+            return;
+        }
+
+        if (User::activeTeachers()->whereKey($this->input('adviser_id'))->exists()) {
+            return;
+        }
+
+        $validator->errors()->add('adviser_id', self::ADVISER_NOT_TEACHER_MESSAGE);
+    }
+
+    private function rejectBusyAdviser(Validator $validator): void
+    {
+        if ($validator->errors()->hasAny(['school_year_id', 'adviser_id'])) {
+            return;
+        }
+
+        $busySection = $this->findBusyAdviserSection();
+
+        if ($busySection === null) {
+            return;
+        }
+
+        $validator->errors()->add('adviser_id', $this->formatAdviserBusyMessage($busySection));
     }
 }

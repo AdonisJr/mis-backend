@@ -34,7 +34,7 @@ class ListEmployeesRequest extends FormRequest
     {
         return [
             'search' => self::SEARCH_RULES,
-            'role' => ['nullable', 'string', Rule::in(Role::STAFF_ROLES)],
+            'role' => ['nullable', 'string', Rule::in(Role::EMPLOYEE_ROLES)],
             'status' => ['nullable', 'string', Rule::in(self::STATUSES)],
         ];
     }
