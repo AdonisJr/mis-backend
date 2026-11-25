@@ -89,7 +89,7 @@ class DatabaseSeederTest extends TestCase
         $this->seed();
 
         $this->assertSame(2, User::count());
-        $this->assertSame(4, Role::count());
+        $this->assertSame(5, Role::count());
         $this->assertSame(2, DB::table('role_user')->count());
     }
 

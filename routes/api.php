@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AssessmentCandidateController;
 use App\Http\Controllers\AssessmentController;
 use App\Http\Controllers\AuthController;
@@ -48,6 +49,7 @@ Route::prefix('mis')->group(function () {
         Route::get('/school-years', [SchoolYearController::class, 'listSchoolYears']);
         Route::get('/school-years/{id}/terms', [TermController::class, 'listTerms'])->whereNumber('id');
         Route::get('/terms/get-active', [TermController::class, 'fetchActiveTerm']);
+        Route::get('/grade-levels', [GradeLevelController::class, 'listGradeLevels']);
     });
 
     Route::middleware(['auth:sanctum', 'role:'.implode(',', Role::CLASS_LIST_ROLES)])->group(function () {
@@ -66,7 +68,6 @@ Route::prefix('mis')->group(function () {
     });
 
     Route::middleware(['auth:sanctum', 'role:'.implode(',', Role::STAFF_ROLES)])->group(function () {
-        Route::get('/grade-levels', [GradeLevelController::class, 'listGradeLevels']);
         Route::get('/programs', [ProgramController::class, 'listPrograms']);
         Route::get('/subjects', [SubjectController::class, 'listSubjects']);
         Route::get('/subjects/active', [SubjectController::class, 'listActiveSubjects']);
@@ -126,6 +127,16 @@ Route::prefix('mis')->group(function () {
         Route::get('/payments/{id}/receipt', [PaymentController::class, 'showReceipt'])->whereNumber('id');
         Route::get('/payment-holds', [PaymentHoldController::class, 'listPaymentHolds']);
         Route::get('/payment-holds/check', [PaymentHoldController::class, 'checkHold']);
+    });
+
+    Route::middleware(['auth:sanctum', 'role:'.implode(',', Role::ACCOUNTING_ROLES)])->group(function () {
+        Route::get('/accounts', [AccountController::class, 'listAccounts']);
+        Route::get('/accounts/{id}', [AccountController::class, 'showAccount'])->whereNumber('id');
+        Route::post('/accounts', [AccountController::class, 'createAccount']);
+        Route::put('/accounts/{id}', [AccountController::class, 'updateAccount'])->whereNumber('id');
+        Route::put('/accounts/{id}/deactivate', [AccountController::class, 'deactivateAccount'])->whereNumber('id');
+        Route::put('/accounts/{id}/reactivate', [AccountController::class, 'reactivateAccount'])->whereNumber('id');
+        Route::delete('/accounts/{id}', [AccountController::class, 'deleteAccount'])->whereNumber('id');
     });
 
     Route::middleware(['auth:sanctum', 'role:'.implode(',', Role::PAYMENT_WRITE_ROLES)])->group(function () {
