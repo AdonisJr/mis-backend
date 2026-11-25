@@ -23,7 +23,7 @@ class AccountController extends Controller
 
     public function listAccounts(ListAccountsRequest $request): JsonResponse
     {
-        $accountQuery = Account::query()->orderBy('code')->orderBy('id');
+        $accountQuery = Account::query()->withExists('journalLines')->orderBy('code')->orderBy('id');
         $this->applySearch($accountQuery, (string) $request->validated('search'));
         $accountQuery->when($request->filled('type'), fn (Builder $query) => $query->where('type', $request->validated('type')));
         $accountQuery->when($request->filled('status'), fn (Builder $query) => $query->where('is_active', $request->validated('status') === ListProgramsRequest::STATUS_ACTIVE));

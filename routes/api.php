@@ -15,9 +15,11 @@ use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\FeeItemController;
 use App\Http\Controllers\FeeScheduleController;
 use App\Http\Controllers\FeeScheduleCopyController;
+use App\Http\Controllers\GeneralLedgerController;
 use App\Http\Controllers\GradeLevelController;
 use App\Http\Controllers\GradingActivityController;
 use App\Http\Controllers\GradingScoreController;
+use App\Http\Controllers\JournalEntryController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PaymentHoldController;
 use App\Http\Controllers\PaymentPlanController;
@@ -137,6 +139,14 @@ Route::prefix('mis')->group(function () {
         Route::put('/accounts/{id}/deactivate', [AccountController::class, 'deactivateAccount'])->whereNumber('id');
         Route::put('/accounts/{id}/reactivate', [AccountController::class, 'reactivateAccount'])->whereNumber('id');
         Route::delete('/accounts/{id}', [AccountController::class, 'deleteAccount'])->whereNumber('id');
+        Route::get('/journal-entries', [JournalEntryController::class, 'listJournalEntries']);
+        Route::get('/journal-entries/{id}', [JournalEntryController::class, 'showJournalEntry'])->whereNumber('id');
+        Route::post('/journal-entries', [JournalEntryController::class, 'createJournalEntry']);
+        Route::put('/journal-entries/{id}', [JournalEntryController::class, 'updateJournalEntry'])->whereNumber('id');
+        Route::delete('/journal-entries/{id}', [JournalEntryController::class, 'deleteJournalEntry'])->whereNumber('id');
+        Route::post('/journal-entries/{id}/post', [JournalEntryController::class, 'postJournalEntry'])->whereNumber('id');
+        Route::post('/journal-entries/{id}/reverse', [JournalEntryController::class, 'reverseJournalEntry'])->whereNumber('id');
+        Route::get('/general-ledger', [GeneralLedgerController::class, 'showGeneralLedger']);
     });
 
     Route::middleware(['auth:sanctum', 'role:'.implode(',', Role::PAYMENT_WRITE_ROLES)])->group(function () {

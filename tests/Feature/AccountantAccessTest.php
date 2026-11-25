@@ -51,6 +51,14 @@ class AccountantAccessTest extends TestCase
         'PUT api/mis/accounts/{id}/deactivate',
         'PUT api/mis/accounts/{id}/reactivate',
         'DELETE api/mis/accounts/{id}',
+        'GET api/mis/journal-entries',
+        'GET api/mis/journal-entries/{id}',
+        'POST api/mis/journal-entries',
+        'PUT api/mis/journal-entries/{id}',
+        'DELETE api/mis/journal-entries/{id}',
+        'POST api/mis/journal-entries/{id}/post',
+        'POST api/mis/journal-entries/{id}/reverse',
+        'GET api/mis/general-ledger',
     ];
 
     // every api/mis route except the session ones and the accountant routes; a new route the accountant can reach fails the 403 loop first
