@@ -28,7 +28,13 @@ class SubjectFactory extends Factory
             'type' => Subject::TYPE_JHS_LEARNING_AREA,
             'weekly_hours' => '4.0',
             'description' => null,
+            'weight_group' => fn (array $attributes) => Subject::DEFAULT_WEIGHT_GROUPS[$attributes['type']],
         ];
+    }
+
+    public function weightGroup(string $weightGroup): static
+    {
+        return $this->state(fn (array $attributes) => ['weight_group' => $weightGroup]);
     }
 
     public function shsCore(): static

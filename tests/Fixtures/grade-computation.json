@@ -1,0 +1,308 @@
+{
+    "_twin": "Identical copy kept in mis-backend tests/Fixtures/grade-computation.json and beside the mis-frontend grade computation Vitest file; change both together.",
+    "quarter_cases": [
+        {
+            "name": "typical_jhs_languages",
+            "weights": {
+                "ww": 30,
+                "pt": 50,
+                "qa": 20
+            },
+            "activities": [
+                {
+                    "component": "ww",
+                    "highest": 20,
+                    "score": "15.5"
+                },
+                {
+                    "component": "ww",
+                    "highest": 30,
+                    "score": "25"
+                },
+                {
+                    "component": "pt",
+                    "highest": 50,
+                    "score": "40"
+                },
+                {
+                    "component": "qa",
+                    "highest": 40,
+                    "score": "30"
+                }
+            ],
+            "expected": {
+                "ww": {
+                    "percentage": "81.00",
+                    "weighted": "24.30"
+                },
+                "pt": {
+                    "percentage": "80.00",
+                    "weighted": "40.00"
+                },
+                "qa": {
+                    "percentage": "75.00",
+                    "weighted": "15.00"
+                },
+                "initial_grade": "79.30",
+                "quarterly_grade": 87
+            }
+        },
+        {
+            "name": "blank_and_empty_component",
+            "weights": {
+                "ww": 30,
+                "pt": 50,
+                "qa": 20
+            },
+            "activities": [
+                {
+                    "component": "ww",
+                    "highest": 10,
+                    "score": null
+                },
+                {
+                    "component": "ww",
+                    "highest": 10,
+                    "score": "7"
+                },
+                {
+                    "component": "pt",
+                    "highest": 20,
+                    "score": "10"
+                }
+            ],
+            "expected": {
+                "ww": {
+                    "percentage": "35.00",
+                    "weighted": "10.50"
+                },
+                "pt": {
+                    "percentage": "50.00",
+                    "weighted": "25.00"
+                },
+                "qa": {
+                    "percentage": "0.00",
+                    "weighted": "0.00"
+                },
+                "initial_grade": "35.50",
+                "quarterly_grade": 68
+            }
+        },
+        {
+            "name": "repeating_decimals_science_math",
+            "weights": {
+                "ww": 40,
+                "pt": 40,
+                "qa": 20
+            },
+            "activities": [
+                {
+                    "component": "ww",
+                    "highest": 3,
+                    "score": "2"
+                },
+                {
+                    "component": "pt",
+                    "highest": 7,
+                    "score": "5"
+                },
+                {
+                    "component": "qa",
+                    "highest": 9,
+                    "score": "8"
+                }
+            ],
+            "expected": {
+                "ww": {
+                    "percentage": "66.67",
+                    "weighted": "26.67"
+                },
+                "pt": {
+                    "percentage": "71.43",
+                    "weighted": "28.57"
+                },
+                "qa": {
+                    "percentage": "88.89",
+                    "weighted": "17.78"
+                },
+                "initial_grade": "73.02",
+                "quarterly_grade": 83
+            }
+        },
+        {
+            "name": "perfect_shs_core",
+            "weights": {
+                "ww": 25,
+                "pt": 50,
+                "qa": 25
+            },
+            "activities": [
+                {
+                    "component": "ww",
+                    "highest": 10,
+                    "score": "10"
+                },
+                {
+                    "component": "pt",
+                    "highest": 20,
+                    "score": "20"
+                },
+                {
+                    "component": "qa",
+                    "highest": 30,
+                    "score": "30"
+                }
+            ],
+            "expected": {
+                "ww": {
+                    "percentage": "100.00",
+                    "weighted": "25.00"
+                },
+                "pt": {
+                    "percentage": "100.00",
+                    "weighted": "50.00"
+                },
+                "qa": {
+                    "percentage": "100.00",
+                    "weighted": "25.00"
+                },
+                "initial_grade": "100.00",
+                "quarterly_grade": 100
+            }
+        }
+    ],
+    "transmutation": [
+        {
+            "initial_grade": "0.00",
+            "quarterly_grade": 60
+        },
+        {
+            "initial_grade": "3.99",
+            "quarterly_grade": 60
+        },
+        {
+            "initial_grade": "4.00",
+            "quarterly_grade": 61
+        },
+        {
+            "initial_grade": "59.99",
+            "quarterly_grade": 74
+        },
+        {
+            "initial_grade": "60.00",
+            "quarterly_grade": 75
+        },
+        {
+            "initial_grade": "61.59",
+            "quarterly_grade": 75
+        },
+        {
+            "initial_grade": "61.60",
+            "quarterly_grade": 76
+        },
+        {
+            "initial_grade": "98.39",
+            "quarterly_grade": 98
+        },
+        {
+            "initial_grade": "98.40",
+            "quarterly_grade": 99
+        },
+        {
+            "initial_grade": "100.00",
+            "quarterly_grade": 100
+        }
+    ],
+    "final_grades": [
+        {
+            "quarterly_grades": [
+                88,
+                89,
+                90,
+                91
+            ],
+            "final_grade": 90
+        },
+        {
+            "quarterly_grades": [
+                75,
+                74,
+                74,
+                74
+            ],
+            "final_grade": 74
+        },
+        {
+            "quarterly_grades": [
+                84,
+                85
+            ],
+            "final_grade": 85
+        },
+        {
+            "quarterly_grades": [
+                80,
+                null
+            ],
+            "final_grade": null
+        }
+    ],
+    "general_averages": [
+        {
+            "final_grades": [
+                90,
+                85,
+                88
+            ],
+            "average": "87.67",
+            "rounded_average": 88,
+            "descriptor": "Very Satisfactory"
+        },
+        {
+            "final_grades": [
+                89,
+                90
+            ],
+            "average": "89.50",
+            "rounded_average": 90,
+            "descriptor": "Outstanding"
+        },
+        {
+            "final_grades": [
+                74,
+                75
+            ],
+            "average": "74.50",
+            "rounded_average": 75,
+            "descriptor": "Fairly Satisfactory"
+        },
+        {
+            "final_grades": [
+                74,
+                74
+            ],
+            "average": "74.00",
+            "rounded_average": 74,
+            "descriptor": "Did Not Meet Expectations"
+        },
+        {
+            "final_grades": [
+                80,
+                null
+            ],
+            "average": null,
+            "rounded_average": null,
+            "descriptor": null
+        }
+    ],
+    "remarks": [
+        {
+            "grade": 75,
+            "remarks": "Passed"
+        },
+        {
+            "grade": 74,
+            "remarks": "Failed"
+        }
+    ]
+}

@@ -17,6 +17,8 @@ class SchoolClassController extends Controller
 {
     public const RELATIONS = SchoolClass::RESOURCE_RELATIONS;
 
+    public const GRADING_DELETE_MESSAGE = 'The class has grading records and cannot be deleted.';
+
     public function showClass(int $id): JsonResponse
     {
         return response()->json([
@@ -43,11 +45,28 @@ class SchoolClassController extends Controller
         ]);
     }
 
-    public function deleteClass(int $id): Response
+    public function deleteClass(int $id): Response|JsonResponse
     {
-        SchoolClass::findOrFail($id)->delete();
+        $schoolClass = SchoolClass::findOrFail($id);
+        $isDeleted = DB::transaction(fn () => $this->deleteUnlessGraded($schoolClass), SchoolClass::TRANSACTION_ATTEMPTS);
+
+        if (! $isDeleted) {
+            return response()->json(['message' => self::GRADING_DELETE_MESSAGE], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
 
         return response()->noContent();
+    }
+
+    private function deleteUnlessGraded(SchoolClass $schoolClass): bool
+    {
+        // the same row lock as every grading write, so a racing first activity cannot slip past the check
+        SchoolClass::whereKey($schoolClass->id)->lockForUpdate()->first();
+
+        if ($schoolClass->gradingActivities()->exists() || $schoolClass->classQuarters()->exists()) {
+            return false;
+        }
+
+        return $schoolClass->delete();
     }
 
     private function saveWithinLock(StoreSchoolClassRequest $request, SchoolClass $schoolClass): SchoolClass

@@ -19,7 +19,7 @@ trait InteractsWithCurriculum
 
     private const CURRICULUM_COPY_URL = '/api/mis/curriculum-entries/copy';
 
-    private const SUBJECT_KEYS = ['id', 'code', 'name', 'type', 'weekly_hours', 'description', 'is_active', 'created_at', 'updated_at'];
+    private const SUBJECT_KEYS = ['id', 'code', 'name', 'type', 'weekly_hours', 'description', 'weight_group', 'is_active', 'created_at', 'updated_at'];
 
     private const ENTRY_KEYS = ['id', 'school_year_id', 'grade_level_id', 'subject_id', 'program_id', 'term_number', 'sort_order', 'created_at', 'updated_at', 'subject', 'grade_level', 'program'];
 
@@ -64,6 +64,7 @@ trait InteractsWithCurriculum
             'type' => Subject::TYPE_JHS_LEARNING_AREA,
             'weekly_hours' => 4,
             'description' => 'Grade 7 mathematics',
+            'weight_group' => Subject::DEFAULT_WEIGHT_GROUPS[$overrides['type'] ?? Subject::TYPE_JHS_LEARNING_AREA] ?? null,
             ...$overrides,
         ];
     }

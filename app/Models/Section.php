@@ -86,6 +86,17 @@ class Section extends Model
         return $this->hasMany(Enrollment::class);
     }
 
+    /** @return Collection<int, Student> */
+    public function fetchListedStudents(): Collection
+    {
+        return Student::query()
+            ->whereHas('enrollments', fn (Builder $enrollmentQuery) => $enrollmentQuery->where('section_id', $this->id)->whereIn('status', Enrollment::LISTED_STATUSES))
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->orderBy('id')
+            ->get();
+    }
+
     public function countMostSeatsTaken(): int
     {
         $seatCounts = $this->enrollments()->enrolled()->toBase()->selectRaw('COUNT(*) AS seats_taken')->groupBy('term_id')->pluck('seats_taken');
