@@ -75,6 +75,13 @@ class UserFactory extends Factory
         });
     }
 
+    public function accountant(): static
+    {
+        return $this->afterCreating(function (User $user) {
+            $user->roles()->attach(Role::firstOrCreate(['name' => Role::ACCOUNTANT]));
+        });
+    }
+
     public function inactive(): static
     {
         return $this->state(fn (array $attributes) => ['is_active' => false]);

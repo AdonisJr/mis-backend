@@ -105,6 +105,20 @@ class GradeLevelTest extends TestCase
             ->assertJsonPath('grade_levels.4.stage', 'shs');
     }
 
+    public function test_teacher_and_accountant_list_grade_levels(): void
+    {
+        $teacherUser = User::factory()->teacher()->create(['email' => 'teacher@school.test']);
+        $accountantUser = User::factory()->accountant()->create(['email' => 'accountant@school.test']);
+
+        foreach ([$teacherUser, $accountantUser] as $pickerUser) {
+            $this->app['auth']->forgetGuards();
+            $this->withToken($this->createTokenFor($pickerUser))
+                ->getJson(self::GRADE_LEVELS_URL)
+                ->assertOk()
+                ->assertJsonCount(10, 'grade_levels');
+        }
+    }
+
     public function test_grade_levels_list_is_not_paginated(): void
     {
         $adminToken = $this->createTokenFor($this->createActingAdmin());

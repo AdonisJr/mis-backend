@@ -20,16 +20,20 @@ class Role extends Model
 
     public const TEACHER = 'teacher';
 
+    public const ACCOUNTANT = 'accountant';
+
     public const STAFF_ROLES = [self::ADMIN, self::REGISTRAR, self::CASHIER];
 
     public const REGISTRY_ROLES = [self::ADMIN, self::REGISTRAR];
 
-    public const BILLING_READ_ROLES = [self::ADMIN, self::REGISTRAR, self::CASHIER];
+    public const BILLING_READ_ROLES = [self::ADMIN, self::REGISTRAR, self::CASHIER, self::ACCOUNTANT];
 
     public const PAYMENT_WRITE_ROLES = [self::ADMIN, self::CASHIER];
 
-    // assignable and session roles; the session group also holds the school-year and term picker reads (mis-24); other groups keep their own lists
-    public const EMPLOYEE_ROLES = [self::ADMIN, self::REGISTRAR, self::CASHIER, self::TEACHER];
+    public const ACCOUNTING_ROLES = [self::ADMIN, self::ACCOUNTANT];
+
+    // assignable and session roles; the session group also holds the school-year, term and grade-level picker reads; teacher stays last for the route reachability test
+    public const EMPLOYEE_ROLES = [self::ADMIN, self::REGISTRAR, self::CASHIER, self::ACCOUNTANT, self::TEACHER];
 
     // cashier has no academic reads
     public const CLASS_LIST_ROLES = [self::ADMIN, self::REGISTRAR, self::TEACHER];
