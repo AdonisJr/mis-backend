@@ -11,7 +11,9 @@ use App\Http\Resources\StudentDiscountResource;
 use App\Models\Assessment;
 use App\Models\Student;
 use App\Models\StudentDiscount;
+use App\Models\User;
 use App\Support\AssessmentCalculator;
+use App\Support\BillingPosting;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -100,7 +102,7 @@ class StudentDiscountController extends Controller
         $currentAssessment = $this->rejectUnconfirmedChange($candidate, $request->boolean('reassess'));
 
         $candidate->fill($request->safe()->only(['reference_no', 'remarks']))->save();
-        $this->reassessCurrent($currentAssessment, $request->user()->id);
+        $this->reassessCurrent($currentAssessment, $request->user());
 
         return $candidate->load(self::RELATIONS);
     }
@@ -111,7 +113,7 @@ class StudentDiscountController extends Controller
         $currentAssessment = $this->rejectUnconfirmedChange($studentDiscount, $request->boolean('reassess'));
 
         $studentDiscount->delete();
-        $this->reassessCurrent($currentAssessment, $request->user()->id);
+        $this->reassessCurrent($currentAssessment, $request->user());
     }
 
     private function rejectUnconfirmedChange(StudentDiscount $keyed, bool $isReassessConfirmed): ?Assessment
@@ -137,21 +139,24 @@ class StudentDiscountController extends Controller
         return $currentAssessment;
     }
 
-    private function reassessCurrent(?Assessment $currentAssessment, int $userId): void
+    private function reassessCurrent(?Assessment $currentAssessment, User $user): void
     {
         if ($currentAssessment === null) {
             return;
         }
 
         $candidate = $currentAssessment->buildReassessCandidate($currentAssessment->payment_plan_id);
-        $candidate->forceFill(['created_by' => $userId]);
+        $candidate->forceFill(['created_by' => $user->id]);
 
         try {
             $candidate->lockPaymentPlan();
-            (new AssessmentCalculator($candidate))->buildEligibleDraft()->saveReplacing($currentAssessment);
+            $replacement = (new AssessmentCalculator($candidate))->buildEligibleDraft()->saveReplacing($currentAssessment);
         } catch (ValidationException $exception) {
             throw ValidationException::withMessages(['reassess' => collect($exception->errors())->flatten()->first()]);
         }
+
+        // outside the try: a posting error must never be re-keyed to the reassess field
+        (new BillingPosting($user))->repostAssessment($currentAssessment, $replacement);
     }
 
     private function rejectConflictingAssignment(StudentDiscount $candidate): void

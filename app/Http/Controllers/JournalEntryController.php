@@ -25,6 +25,8 @@ class JournalEntryController extends Controller
 
     public const POSTED_LOCKED_MESSAGE = 'Posted entries cannot be changed. Reverse it instead.';
 
+    public const BILLING_LOCKED_MESSAGE = 'Billing entries are reversed by voiding the payment or re-assessing.';
+
     private const SEARCH_COLUMNS = ['number', 'description', 'reference'];
 
     private const HEADER_FIELDS = ['entry_date', 'description', 'reference'];
@@ -83,6 +85,7 @@ class JournalEntryController extends Controller
     public function reverseJournalEntry(ReverseJournalEntryRequest $request, int $id): JsonResponse
     {
         $original = JournalEntry::findOrFail($id);
+        $this->rejectBillingEntry($original);
         $reversal = new JournalEntry;
         $reversal->forceFill([
             'entry_date' => $request->validated('date'),
@@ -108,6 +111,7 @@ class JournalEntryController extends Controller
             ->with(JournalEntry::ROW_RELATIONS)
             ->when($request->filled('status'), fn (Builder $query) => $query->withDisplayStatus($request->validated('status')))
             // whereDate: the stored date may carry a time part, which would drop the inclusive end day
+            ->when($request->filled('source'), fn (Builder $query) => $query->where('source', $request->validated('source')))
             ->when($request->filled('from'), fn (Builder $query) => $query->whereDate('entry_date', '>=', $request->validated('from')))
             ->when($request->filled('to'), fn (Builder $query) => $query->whereDate('entry_date', '<=', $request->validated('to')))
             ->when($request->filled('account_id'), fn (Builder $query) => $query->whereHas('lines', fn (Builder $lineQuery) => $lineQuery->where('account_id', $request->validated('account_id'))))
@@ -142,11 +146,21 @@ class JournalEntryController extends Controller
     {
         // re-read under the lock: another tab may have posted this row meanwhile
         $entry = JournalEntry::lockForUpdate()->findOrFail($id);
+        $this->rejectBillingEntry($entry);
 
         if ($entry->isPosted()) {
             throw ValidationException::withMessages([JournalPosting::ENTRY_ERROR_KEY => self::POSTED_LOCKED_MESSAGE]);
         }
 
         return $entry;
+    }
+
+    private function rejectBillingEntry(JournalEntry $entry): void
+    {
+        if (! $entry->isBillingSourced()) {
+            return;
+        }
+
+        throw ValidationException::withMessages([JournalPosting::ENTRY_ERROR_KEY => self::BILLING_LOCKED_MESSAGE]);
     }
 }

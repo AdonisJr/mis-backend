@@ -99,6 +99,23 @@ class Account extends Model
         return $this->hasMany(JournalLine::class);
     }
 
+    /** @return HasMany<PostingMapping, $this> */
+    public function postingMappings(): HasMany
+    {
+        return $this->hasMany(PostingMapping::class);
+    }
+
+    /** @return list<string> */
+    public function listMappedLabels(): array
+    {
+        $mappedPurposes = $this->postingMappings()->pluck('purpose')->all();
+
+        return array_map(
+            fn (string $purpose) => PostingMapping::CATALOG[$purpose]['label'],
+            array_values(array_intersect(PostingMapping::PURPOSES, $mappedPurposes)),
+        );
+    }
+
     public function isUsed(): bool
     {
         // listAccounts preloads the flag with withExists, so a list needs no query per row

@@ -142,7 +142,7 @@ class AccountCrudTest extends TestCase
 
     public function test_deactivate_and_reactivate_toggle_is_active(): void
     {
-        $cashAccount = $this->findSeededAccount('1010');
+        $cashAccount = $this->findSeededAccount('1200');
         $accountUrl = self::ACCOUNTS_URL.'/'.$cashAccount->id;
 
         $this->withToken($this->adminToken)->putJson($accountUrl.'/deactivate')
@@ -173,7 +173,7 @@ class AccountCrudTest extends TestCase
 
     public function test_delete_seeded_account_is_allowed_while_unused(): void
     {
-        $cashAccount = $this->findSeededAccount('1010');
+        $cashAccount = $this->findSeededAccount('1200');
 
         $this->withToken($this->adminToken)->deleteJson(self::ACCOUNTS_URL.'/'.$cashAccount->id)->assertNoContent();
 

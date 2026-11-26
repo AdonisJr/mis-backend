@@ -24,6 +24,8 @@ class JournalEntryRowResource extends JsonResource
             'reference' => $this->reference,
             'status' => $this->status,
             'display_status' => $this->getDisplayStatus(),
+            'source' => $this->source,
+            'source_link' => $this->buildSourceLink(),
             'debit_total' => (string) $this->calculateDebitTotal(),
             'credit_total' => (string) $this->calculateCreditTotal(),
         ];

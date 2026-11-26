@@ -15,6 +15,7 @@ use App\Models\Payment;
 use App\Models\Role;
 use App\Models\Student;
 use App\Models\User;
+use App\Support\BillingPosting;
 use App\Support\PaymentAllocation;
 use App\Support\ReceiptNumberAllocator;
 use Brick\Math\BigDecimal;
@@ -173,7 +174,10 @@ class PaymentController extends Controller
             'recorded_by' => $request->user()->id,
         ])->save();
 
-        return $payment->load(Payment::ROW_RELATIONS);
+        $payment->load(Payment::ROW_RELATIONS);
+        (new BillingPosting($request->user()))->postPayment($payment);
+
+        return $payment;
     }
 
     private function lockCurrentAssessment(int $assessmentId): Assessment
@@ -205,6 +209,7 @@ class PaymentController extends Controller
             'voided_by' => $request->user()->id,
             'void_reason' => $request->validated('void_reason'),
         ])->save();
+        (new BillingPosting($request->user()))->reversePayment($payment);
 
         return $payment->load(Payment::ROW_RELATIONS);
     }

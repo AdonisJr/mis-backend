@@ -24,6 +24,7 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PaymentHoldController;
 use App\Http\Controllers\PaymentPlanController;
 use App\Http\Controllers\PaymentPlanCopyController;
+use App\Http\Controllers\PostingSettingsController;
 use App\Http\Controllers\ProgramController;
 use App\Http\Controllers\PromissoryNoteController;
 use App\Http\Controllers\ReportCardController;
@@ -38,6 +39,7 @@ use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\TeacherController;
 use App\Http\Controllers\TermController;
 use App\Http\Controllers\TimetableController;
+use App\Http\Controllers\UnpostedEventController;
 use App\Models\Role;
 use Illuminate\Support\Facades\Route;
 
@@ -147,6 +149,10 @@ Route::prefix('mis')->group(function () {
         Route::post('/journal-entries/{id}/post', [JournalEntryController::class, 'postJournalEntry'])->whereNumber('id');
         Route::post('/journal-entries/{id}/reverse', [JournalEntryController::class, 'reverseJournalEntry'])->whereNumber('id');
         Route::get('/general-ledger', [GeneralLedgerController::class, 'showGeneralLedger']);
+        Route::get('/posting-settings', [PostingSettingsController::class, 'showPostingMappings']);
+        Route::put('/posting-settings', [PostingSettingsController::class, 'updatePostingMappings']);
+        Route::get('/unposted-events', [UnpostedEventController::class, 'listUnpostedEvents']);
+        Route::post('/unposted-events/post', [UnpostedEventController::class, 'postPendingEvents']);
     });
 
     Route::middleware(['auth:sanctum', 'role:'.implode(',', Role::PAYMENT_WRITE_ROLES)])->group(function () {

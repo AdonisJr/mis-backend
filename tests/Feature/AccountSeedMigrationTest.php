@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Account;
+use App\Models\PostingMapping;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -22,6 +23,8 @@ class AccountSeedMigrationTest extends TestCase
     {
         parent::setUp();
 
+        // the mapping seed points at seeded accounts; this test covers the chart seed alone
+        PostingMapping::query()->delete();
         // a fresh instance, like a real re-run after a rollback
         $this->seedMigration = require glob(database_path('migrations/*_seed_starter_chart_of_accounts.php'))[0];
     }

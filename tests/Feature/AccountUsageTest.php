@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateAccountRequest;
 use App\Models\Account;
 use App\Models\JournalEntry;
 use App\Models\JournalLine;
+use App\Models\PostingMapping;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -126,6 +127,8 @@ class AccountUsageTest extends TestCase
     public function test_seed_rollback_keeps_a_used_seeded_account(): void
     {
         $this->createPostedEntry('5040', '1010', '10.00');
+        // the mapping seed points at seeded accounts; this test covers the chart seed alone
+        PostingMapping::query()->delete();
         $seedMigration = require database_path('migrations/'.self::SEED_MIGRATION);
 
         $seedMigration->down();

@@ -30,6 +30,7 @@ class ListJournalEntriesRequest extends FormRequest
             'from' => ['nullable', 'date_format:Y-m-d'],
             'to' => ['nullable', 'date_format:Y-m-d', Rule::when($this->filled('from'), 'after_or_equal:from')],
             'account_id' => StoreSectionRequest::buildIdRules('nullable', Account::class),
+            'source' => ['nullable', 'string', Rule::in(JournalEntry::SOURCES)],
             'search' => ['nullable', 'string', 'max:255'],
         ];
     }
