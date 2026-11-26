@@ -18,12 +18,12 @@ trait InteractsWithJournalEntries
     private const GENERAL_LEDGER_URL = '/api/mis/general-ledger';
 
     private const JOURNAL_ENTRY_KEYS = [
-        'id', 'number', 'entry_date', 'description', 'reference', 'status', 'display_status', 'can_reverse', 'source',
+        'id', 'number', 'entry_date', 'description', 'reference', 'status', 'display_status', 'can_reverse', 'source', 'source_link',
         'created_by', 'posted_by', 'posted_at', 'reversal_of', 'reversed_by', 'reversal_reason', 'debit_total', 'credit_total',
         'lines', 'created_at', 'updated_at',
     ];
 
-    private const JOURNAL_ROW_KEYS = ['id', 'number', 'entry_date', 'description', 'reference', 'status', 'display_status', 'debit_total', 'credit_total'];
+    private const JOURNAL_ROW_KEYS = ['id', 'number', 'entry_date', 'description', 'reference', 'status', 'display_status', 'source', 'source_link', 'debit_total', 'credit_total'];
 
     private const ENTRY_DATE = '2026-03-02';
 

@@ -9,8 +9,10 @@ use App\Http\Requests\StoreAccountRequest;
 use App\Http\Requests\UpdateAccountRequest;
 use App\Http\Resources\AccountResource;
 use App\Models\Account;
+use App\Models\PostingMapping;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
 class AccountController extends Controller
@@ -18,6 +20,8 @@ class AccountController extends Controller
     use SearchesPaginatedLists;
 
     public const USED_DELETE_MESSAGE = 'The account is in use and cannot be deleted. Deactivate it instead.';
+
+    public const MAPPED_MESSAGE_FORMAT = 'The account is mapped to %s. Re-map it in Posting settings first.';
 
     private const SEARCH_COLUMNS = ['code', 'name'];
 
@@ -63,17 +67,22 @@ class AccountController extends Controller
 
     public function deactivateAccount(int $id): JsonResponse
     {
-        return $this->saveActiveState($id, false);
+        return DB::transaction(fn () => $this->deactivateWithinLock($id), PostingMapping::TRANSACTION_ATTEMPTS);
     }
 
     public function reactivateAccount(int $id): JsonResponse
     {
-        return $this->saveActiveState($id, true);
+        return $this->saveActiveState(Account::findOrFail($id), true);
     }
 
     public function deleteAccount(int $id): Response|JsonResponse
     {
         $account = Account::findOrFail($id);
+        $mappedRefusal = $this->buildMappedRefusal($account);
+
+        if ($mappedRefusal !== null) {
+            return $mappedRefusal;
+        }
 
         if ($account->isUsed()) {
             return response()->json(['message' => self::USED_DELETE_MESSAGE], Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -89,9 +98,27 @@ class AccountController extends Controller
         return self::SEARCH_COLUMNS;
     }
 
-    private function saveActiveState(int $id, bool $isActive): JsonResponse
+    private function deactivateWithinLock(int $id): JsonResponse
     {
-        $account = Account::findOrFail($id);
+        // locked so a concurrent mapping update cannot map the account between the check and the save
+        $account = Account::lockForUpdate()->findOrFail($id);
+
+        return $this->buildMappedRefusal($account) ?? $this->saveActiveState($account, false);
+    }
+
+    private function buildMappedRefusal(Account $account): ?JsonResponse
+    {
+        $mappedLabels = $account->listMappedLabels();
+
+        if ($mappedLabels === []) {
+            return null;
+        }
+
+        return response()->json(['message' => sprintf(self::MAPPED_MESSAGE_FORMAT, implode(', ', $mappedLabels))], Response::HTTP_UNPROCESSABLE_ENTITY);
+    }
+
+    private function saveActiveState(Account $account, bool $isActive): JsonResponse
+    {
         $account->forceFill(['is_active' => $isActive])->save();
 
         return response()->json([

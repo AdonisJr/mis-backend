@@ -7,6 +7,7 @@ use App\Http\Requests\StorePaymentRequest;
 use App\Models\Payment;
 use App\Models\PaymentPlan;
 use App\Models\User;
+use App\Support\ReceiptNumberAllocator;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Arr;
@@ -148,8 +149,8 @@ class PaymentRecordTest extends TestCase
         }
 
         $this->assertSame(['AR-000001', 'AR-000002', 'AR-000003'], $arNumbers);
-        $this->assertSame(3, DB::table('receipt_counters')->value('last_number'));
-        $this->assertSame(1, DB::table('receipt_counters')->count());
+        $this->assertSame(3, DB::table('receipt_counters')->where('series', ReceiptNumberAllocator::AR_SERIES)->value('last_number'));
+        $this->assertSame(1, DB::table('receipt_counters')->where('series', ReceiptNumberAllocator::AR_SERIES)->count());
     }
 
     public function test_failed_record_consumes_no_ar_number(): void
@@ -320,7 +321,7 @@ class PaymentRecordTest extends TestCase
             ->assertJsonPath('errors.assessment_id.0', PaymentController::SUPERSEDED_MESSAGE);
 
         $this->assertEquals($snapshot, $this->snapshotPaymentTables());
-        $this->assertDatabaseCount('receipt_counters', 0);
+        $this->assertSame(0, DB::table('receipt_counters')->where('series', ReceiptNumberAllocator::AR_SERIES)->count());
     }
 
     public function test_overpayment_is_rejected_and_exact_balance_is_accepted(): void

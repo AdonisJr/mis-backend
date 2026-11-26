@@ -12,6 +12,7 @@ use App\Http\Resources\AssessmentRowResource;
 use App\Models\Assessment;
 use App\Models\Student;
 use App\Support\AssessmentCalculator;
+use App\Support\BillingPosting;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -120,7 +121,10 @@ class AssessmentController extends Controller
             throw ValidationException::withMessages(['student_id' => StoreAssessmentRequest::ALREADY_ASSESSED_MESSAGE]);
         }
 
-        return (new AssessmentCalculator($candidate))->buildEligibleDraft()->saveReplacing(null);
+        $assessment = (new AssessmentCalculator($candidate))->buildEligibleDraft()->saveReplacing(null);
+        (new BillingPosting($request->user()))->postAssessment($assessment);
+
+        return $assessment;
     }
 
     private function reassessWithinLock(Assessment $storedAssessment, ReassessAssessmentRequest $request): ?Assessment
@@ -141,6 +145,9 @@ class AssessmentController extends Controller
         $candidate->forceFill(['created_by' => $request->user()->id]);
         $candidate->lockPaymentPlan();
 
-        return (new AssessmentCalculator($candidate))->buildEligibleDraft()->saveReplacing($currentAssessment);
+        $replacement = (new AssessmentCalculator($candidate))->buildEligibleDraft()->saveReplacing($currentAssessment);
+        (new BillingPosting($request->user()))->repostAssessment($currentAssessment, $replacement);
+
+        return $replacement;
     }
 }

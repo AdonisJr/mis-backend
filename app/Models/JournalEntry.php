@@ -39,6 +39,14 @@ class JournalEntry extends Model
 
     public const SOURCE_MANUAL = 'manual';
 
+    public const SOURCE_ASSESSMENT = 'assessment';
+
+    public const SOURCE_PAYMENT = 'payment';
+
+    public const BILLING_SOURCES = [self::SOURCE_ASSESSMENT, self::SOURCE_PAYMENT];
+
+    public const SOURCES = [self::SOURCE_MANUAL, self::SOURCE_ASSESSMENT, self::SOURCE_PAYMENT];
+
     public const NUMBER_FORMAT = 'JV-%06d';
 
     public const MIN_LINES = 2;
@@ -139,9 +147,42 @@ class JournalEntry extends Model
         return $this->reversed_by_id !== null;
     }
 
+    public function isBillingSourced(): bool
+    {
+        return in_array($this->source, self::BILLING_SOURCES, true);
+    }
+
     public function canBeReversed(): bool
     {
-        return $this->isPosted() && ! $this->isReversal() && ! $this->isReversed();
+        return $this->isPosted() && ! $this->isReversal() && ! $this->isReversed() && ! $this->isBillingSourced();
+    }
+
+    /** @return array{type: string, id: int}|null */
+    public function buildSourceLink(): ?array
+    {
+        if (! $this->isBillingSourced()) {
+            return null;
+        }
+
+        return ['type' => $this->source_type, 'id' => $this->source_id];
+    }
+
+    /** An unsaved entry carrying the billing record's three source fields. */
+    public static function buildForSource(Assessment|Payment $record): self
+    {
+        $sourceType = $record instanceof Payment ? self::SOURCE_PAYMENT : self::SOURCE_ASSESSMENT;
+        $entry = new self;
+        $entry->forceFill(['source' => $sourceType, 'source_type' => $sourceType, 'source_id' => $record->id]);
+
+        return $entry;
+    }
+
+    /** @param Builder<JournalEntry> $query */
+    public function scopeOriginalsFor(Builder $query, self $sourceCarrier): void
+    {
+        $query->where('source_type', $sourceCarrier->source_type)
+            ->where('source_id', $sourceCarrier->source_id)
+            ->whereNull('reversal_of_id');
     }
 
     public function getDisplayStatus(): string

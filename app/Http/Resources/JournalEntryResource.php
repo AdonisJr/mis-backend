@@ -30,6 +30,7 @@ class JournalEntryResource extends JsonResource
             'display_status' => $this->getDisplayStatus(),
             'can_reverse' => $this->canBeReversed(),
             'source' => $this->source,
+            'source_link' => $this->buildSourceLink(),
             'created_by' => $this->buildUserSummary($this->creator),
             'posted_by' => $this->buildUserSummary($this->poster),
             'posted_at' => $this->posted_at,
