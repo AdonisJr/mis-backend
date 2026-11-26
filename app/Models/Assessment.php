@@ -32,6 +32,8 @@ class Assessment extends Model
 
     public const LEDGER_RELATIONS = ['student', 'schoolYear', 'gradeLevel', 'program', 'installments', 'payments.student', 'payments.recorder', 'payments.voider'];
 
+    public const AGING_RELATIONS = ['student', 'schoolYear', 'gradeLevel', 'installments', 'payments'];
+
     public const HAS_PAYMENTS_MESSAGE = 'The assessment has payments. Void them before re-assessing.';
 
     /**
@@ -172,6 +174,14 @@ class Assessment extends Model
     public function scopeCurrent(Builder $query): void
     {
         $query->where('assessments.status', self::STATUS_CURRENT);
+    }
+
+    /** @param Builder<Assessment> $query */
+    public function scopeCurrentOn(Builder $query, string $date): void
+    {
+        // the app clock is Manila time, so a replacement made on the day itself is the current one that day
+        $query->whereDate('assessments.created_at', '<=', $date)
+            ->where(fn (Builder $supersededQuery) => $supersededQuery->whereNull('assessments.superseded_at')->orWhereDate('assessments.superseded_at', '>', $date));
     }
 
     /** @param Builder<Assessment> $query */

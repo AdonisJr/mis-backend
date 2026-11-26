@@ -44,17 +44,30 @@ class PaymentAllocation
     /** @return list<array{sequence: int, label: string, due_date: string, amount: string, paid: string, status: string, is_overdue: bool}> */
     public function buildScheduleRows(): array
     {
-        $remaining = $this->assessment->calculateTotalPaid();
-        $scheduleRows = [];
+        $filledPairs = $this->fillOldestDueFirst($this->assessment->calculateTotalPaid());
 
-        foreach ($this->assessment->installments as $installment) {
-            $installmentAmount = BigDecimal::of($installment->amount);
-            $paid = $remaining->isLessThan($installmentAmount) ? $remaining : $installmentAmount;
-            $remaining = $remaining->minus($paid);
-            $scheduleRows[] = $this->buildScheduleRow($installment, $paid);
+        return array_map(fn (array $filledPair) => $this->buildScheduleRow($filledPair['installment'], $filledPair['paid']), $filledPairs);
+    }
+
+    /**
+     * Outstanding amount per installment on a past date. Payments beyond the schedule total come back as one extra negative row dated the as-of day.
+     *
+     * @return list<array{due_date: string, outstanding: string}>
+     */
+    public function buildOutstandingRowsAsOf(string $asOf): array
+    {
+        $paidTotal = self::sumPaidAsOf($this->assessment->payments, $asOf);
+        $outstandingRows = array_map(fn (array $filledPair) => [
+            'due_date' => $filledPair['installment']->due_date->toDateString(),
+            'outstanding' => (string) BigDecimal::of($filledPair['installment']->amount)->minus($filledPair['paid'])->toScale(self::MONEY_SCALE),
+        ], $this->fillOldestDueFirst($paidTotal));
+        $overpayment = $paidTotal->minus(self::sumAmounts($this->assessment->installments->pluck('amount')));
+
+        if ($overpayment->isPositive()) {
+            $outstandingRows[] = ['due_date' => $asOf, 'outstanding' => (string) $overpayment->negated()->toScale(self::MONEY_SCALE)];
         }
 
-        return $scheduleRows;
+        return $outstandingRows;
     }
 
     public function calculateNextAmountDue(): BigDecimal
@@ -66,6 +79,39 @@ class PaymentAllocation
         }
 
         return BigDecimal::zero()->toScale(self::MONEY_SCALE);
+    }
+
+    /** @return list<array{installment: AssessmentInstallment, paid: BigDecimal}> */
+    private function fillOldestDueFirst(BigDecimal $paidTotal): array
+    {
+        $remaining = $paidTotal;
+        $filledPairs = [];
+
+        foreach ($this->assessment->installments as $installment) {
+            $installmentAmount = BigDecimal::of($installment->amount);
+            $paid = $remaining->isLessThan($installmentAmount) ? $remaining : $installmentAmount;
+            $remaining = $remaining->minus($paid);
+            $filledPairs[] = ['installment' => $installment, 'paid' => $paid];
+        }
+
+        return $filledPairs;
+    }
+
+    /** @param  Collection<int, Payment>  $payments */
+    private static function sumPaidAsOf(Collection $payments, string $asOf): BigDecimal
+    {
+        $countedAmounts = $payments->filter(fn (Payment $payment) => self::isCountedAsOf($payment, $asOf))->pluck('amount');
+
+        return self::sumAmounts($countedAmounts);
+    }
+
+    private static function isCountedAsOf(Payment $payment, string $asOf): bool
+    {
+        if ($payment->payment_date->toDateString() > $asOf) {
+            return false;
+        }
+
+        return $payment->voided_at === null || $payment->voided_at->toDateString() > $asOf;
     }
 
     /** @return array{sequence: int, label: string, due_date: string, amount: string, paid: string, status: string, is_overdue: bool} */
