@@ -12,7 +12,7 @@ trait InteractsWithAccounts
 
     private const ACCOUNTS_URL = '/api/mis/accounts';
 
-    private const ACCOUNT_KEYS = ['id', 'code', 'name', 'type', 'subtype', 'is_contra', 'normal_balance', 'description', 'is_active', 'created_at', 'updated_at'];
+    private const ACCOUNT_KEYS = ['id', 'code', 'name', 'type', 'subtype', 'is_contra', 'normal_balance', 'description', 'is_active', 'is_used', 'created_at', 'updated_at'];
 
     private const SEEDED_ACCOUNT_COUNT = 33;
 

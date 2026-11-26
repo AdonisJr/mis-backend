@@ -5,6 +5,8 @@ namespace App\Models;
 use Database\Factories\AccountFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Schema;
 
 class Account extends Model
 {
@@ -53,6 +55,8 @@ class Account extends Model
 
     public const NORMAL_BALANCE_CREDIT = 'credit';
 
+    public const USED_FLAG_ATTRIBUTE = 'journal_lines_exists';
+
     public const DEBIT_NORMAL_TYPES = [self::TYPE_ASSET, self::TYPE_EXPENSE];
 
     /**
@@ -89,9 +93,20 @@ class Account extends Model
         return $isDebitType !== $this->is_contra ? self::NORMAL_BALANCE_DEBIT : self::NORMAL_BALANCE_CREDIT;
     }
 
+    /** @return HasMany<JournalLine, $this> */
+    public function journalLines(): HasMany
+    {
+        return $this->hasMany(JournalLine::class);
+    }
+
     public function isUsed(): bool
     {
-        // no table references accounts yet; each referencing table adds its check here
-        return false;
+        // listAccounts preloads the flag with withExists, so a list needs no query per row
+        if (array_key_exists(self::USED_FLAG_ATTRIBUTE, $this->attributes)) {
+            return (bool) $this->attributes[self::USED_FLAG_ATTRIBUTE];
+        }
+
+        // the seed migration's down() runs after journal_lines is dropped
+        return Schema::hasTable('journal_lines') && $this->journalLines()->exists();
     }
 }
