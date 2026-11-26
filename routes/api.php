@@ -15,6 +15,7 @@ use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\FeeItemController;
 use App\Http\Controllers\FeeScheduleController;
 use App\Http\Controllers\FeeScheduleCopyController;
+use App\Http\Controllers\FinancialReportController;
 use App\Http\Controllers\GeneralLedgerController;
 use App\Http\Controllers\GradeLevelController;
 use App\Http\Controllers\GradingActivityController;
@@ -149,6 +150,10 @@ Route::prefix('mis')->group(function () {
         Route::post('/journal-entries/{id}/post', [JournalEntryController::class, 'postJournalEntry'])->whereNumber('id');
         Route::post('/journal-entries/{id}/reverse', [JournalEntryController::class, 'reverseJournalEntry'])->whereNumber('id');
         Route::get('/general-ledger', [GeneralLedgerController::class, 'showGeneralLedger']);
+        Route::get('/reports/trial-balance', [FinancialReportController::class, 'showTrialBalance']);
+        Route::get('/reports/income-statement', [FinancialReportController::class, 'showIncomeStatement']);
+        Route::get('/reports/balance-sheet', [FinancialReportController::class, 'showBalanceSheet']);
+        Route::get('/reports/ar-aging', [FinancialReportController::class, 'showArAging']);
         Route::get('/posting-settings', [PostingSettingsController::class, 'showPostingMappings']);
         Route::put('/posting-settings', [PostingSettingsController::class, 'updatePostingMappings']);
         Route::get('/unposted-events', [UnpostedEventController::class, 'listUnpostedEvents']);
