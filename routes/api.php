@@ -31,6 +31,7 @@ use App\Http\Controllers\PostingSettingsController;
 use App\Http\Controllers\ProgramController;
 use App\Http\Controllers\PromissoryNoteController;
 use App\Http\Controllers\ReportCardController;
+use App\Http\Controllers\RfidController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\SchoolClassController;
 use App\Http\Controllers\SchoolYearController;
@@ -47,6 +48,8 @@ use App\Http\Controllers\TimetableController;
 use App\Http\Controllers\UnpostedEventController;
 use App\Models\Role;
 use Illuminate\Support\Facades\Route;
+
+Route::post('/rfid/scan', [RfidController::class, 'requestRfid'])->middleware('throttle:60,1');
 
 Route::prefix('mis')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
@@ -144,6 +147,10 @@ Route::prefix('mis')->group(function () {
         Route::put('/students/{id}/mobile-account/deactivate', [StudentAccountController::class, 'deactivateAccount'])->whereNumber('id');
         Route::put('/students/{id}/mobile-account/reactivate', [StudentAccountController::class, 'reactivateAccount'])->whereNumber('id');
         Route::post('/sections/{id}/mobile-accounts', [SectionAccountController::class, 'generateAccounts'])->whereNumber('id');
+        Route::post('/rfid/open', [RfidController::class, 'openRfidChannel']);
+        Route::post('/rfid/close', [RfidController::class, 'closeRfidChannel']);
+        Route::put('/students/rfid/{id}', [StudentController::class, 'updateStudentRfid'])->whereNumber('id');
+        Route::delete('/students/rfid/{id}', [StudentController::class, 'deleteStudentRfid'])->whereNumber('id');
     });
 
     Route::middleware(['auth:sanctum', 'role:'.implode(',', Role::BILLING_READ_ROLES)])->group(function () {
