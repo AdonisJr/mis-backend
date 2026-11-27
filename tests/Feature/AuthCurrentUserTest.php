@@ -139,11 +139,6 @@ class AuthCurrentUserTest extends TestCase
         $this->assertSame(1, Role::where('name', Role::ADMIN)->count());
     }
 
-    public function test_attendance_scan_route_is_not_added(): void
-    {
-        $this->postJson('/api/scan', ['rfid' => 'AB:CD:EF:01'])->assertNotFound();
-    }
-
     public function test_legacy_api_user_stub_is_removed(): void
     {
         $adminUser = User::factory()->admin()->create();

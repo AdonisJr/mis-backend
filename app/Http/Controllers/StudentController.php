@@ -27,7 +27,7 @@ class StudentController extends Controller
 
     private const SEARCH_COLUMNS = ['lrn', 'first_name', 'middle_name', 'last_name'];
 
-    private const CURRENT_ENROLLMENT_RELATIONS = ['currentEnrollments.section.gradeLevel'];
+    public const CURRENT_ENROLLMENT_RELATIONS = ['currentEnrollments.section.gradeLevel'];
 
     public function listStudents(ListStudentsRequest $request): JsonResponse
     {

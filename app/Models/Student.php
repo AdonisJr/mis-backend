@@ -109,4 +109,10 @@ class Student extends Model
     {
         return $this->hasMany(PromissoryNote::class)->orderByDesc('id');
     }
+
+    /** @return HasMany<StudentAttendance, $this> */
+    public function attendances(): HasMany
+    {
+        return $this->hasMany(StudentAttendance::class);
+    }
 }
