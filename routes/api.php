@@ -21,6 +21,8 @@ use App\Http\Controllers\GradeLevelController;
 use App\Http\Controllers\GradingActivityController;
 use App\Http\Controllers\GradingScoreController;
 use App\Http\Controllers\JournalEntryController;
+use App\Http\Controllers\MobileAuthController;
+use App\Http\Controllers\MobileGradeController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PaymentHoldController;
 use App\Http\Controllers\PaymentPlanController;
@@ -32,8 +34,10 @@ use App\Http\Controllers\ReportCardController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\SchoolClassController;
 use App\Http\Controllers\SchoolYearController;
+use App\Http\Controllers\SectionAccountController;
 use App\Http\Controllers\SectionController;
 use App\Http\Controllers\SectionRolloverController;
+use App\Http\Controllers\StudentAccountController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\StudentDiscountController;
 use App\Http\Controllers\SubjectController;
@@ -46,6 +50,20 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('mis')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
+
+    Route::prefix('mobile')->group(function () {
+        Route::post('/login', [MobileAuthController::class, 'login']);
+
+        Route::middleware(['auth:sanctum', 'role:'.implode(',', Role::MOBILE_ROLES)])->group(function () {
+            Route::get('/me', [MobileAuthController::class, 'fetchProfile']);
+            Route::put('/password', [MobileAuthController::class, 'changePassword']);
+            Route::post('/logout', [AuthController::class, 'logout']);
+
+            Route::middleware('password.changed')->group(function () {
+                Route::get('/grades', [MobileGradeController::class, 'showGrades']);
+            });
+        });
+    });
 
     Route::middleware(['auth:sanctum', 'role:'.implode(',', Role::EMPLOYEE_ROLES)])->group(function () {
         Route::get('/user', [AuthController::class, 'fetchCurrentUser']);
@@ -120,6 +138,12 @@ Route::prefix('mis')->group(function () {
         Route::post('/curriculum-entries', [CurriculumEntryController::class, 'createEntry']);
         Route::put('/curriculum-entries/{id}', [CurriculumEntryController::class, 'updateEntry'])->whereNumber('id');
         Route::delete('/curriculum-entries/{id}', [CurriculumEntryController::class, 'deleteEntry'])->whereNumber('id');
+        Route::get('/students/{id}/mobile-account', [StudentAccountController::class, 'showAccount'])->whereNumber('id');
+        Route::post('/students/{id}/mobile-account', [StudentAccountController::class, 'createAccount'])->whereNumber('id');
+        Route::put('/students/{id}/mobile-account/password', [StudentAccountController::class, 'resetPassword'])->whereNumber('id');
+        Route::put('/students/{id}/mobile-account/deactivate', [StudentAccountController::class, 'deactivateAccount'])->whereNumber('id');
+        Route::put('/students/{id}/mobile-account/reactivate', [StudentAccountController::class, 'reactivateAccount'])->whereNumber('id');
+        Route::post('/sections/{id}/mobile-accounts', [SectionAccountController::class, 'generateAccounts'])->whereNumber('id');
     });
 
     Route::middleware(['auth:sanctum', 'role:'.implode(',', Role::BILLING_READ_ROLES)])->group(function () {

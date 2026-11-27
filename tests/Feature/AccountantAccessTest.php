@@ -27,7 +27,7 @@ class AccountantAccessTest extends TestCase
 
     private const ACCOUNTANT_PASSWORD = 'secret-pass-1';
 
-    private const SESSION_URIS = ['api/mis/login', 'api/mis/user', 'api/mis/logout'];
+    private const SESSION_URIS = ['api/mis/login', 'api/mis/mobile/login', 'api/mis/user', 'api/mis/logout'];
 
     private const ACCOUNTANT_ROUTES = [
         'GET api/mis/school-years',
@@ -70,7 +70,7 @@ class AccountantAccessTest extends TestCase
     ];
 
     // every api/mis route except the session ones and the accountant routes; a new route the accountant can reach fails the 403 loop first
-    private const CHECKED_ROUTE_COUNT = 115;
+    private const CHECKED_ROUTE_COUNT = 125;
 
     /** @var array<string, mixed> */
     private array $assessment;

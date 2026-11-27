@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -49,6 +50,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'must_change_password' => 'boolean',
         ];
     }
 
@@ -77,6 +79,18 @@ class User extends Authenticatable
     public function scopeActiveTeachers(Builder $query): void
     {
         $query->where('is_active', true)->whereHas('roles', fn (Builder $roleQuery) => $roleQuery->where('name', Role::TEACHER));
+    }
+
+    /** @param Builder<User> $query */
+    public function scopeEmployees(Builder $query): void
+    {
+        $query->whereDoesntHave('roles', fn (Builder $roleQuery) => $roleQuery->where('name', Role::STUDENT));
+    }
+
+    /** @return HasOne<Student, $this> */
+    public function student(): HasOne
+    {
+        return $this->hasOne(Student::class);
     }
 
     /** @return HasMany<SchoolClass, $this> */

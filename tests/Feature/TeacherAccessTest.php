@@ -22,7 +22,7 @@ class TeacherAccessTest extends TestCase
 
     private const TEACHER_PASSWORD = 'secret-pass-1';
 
-    private const SESSION_URIS = ['api/mis/login', 'api/mis/user', 'api/mis/logout'];
+    private const SESSION_URIS = ['api/mis/login', 'api/mis/mobile/login', 'api/mis/user', 'api/mis/logout'];
 
     // routes a teacher reaches besides the session ones: the MIS-24 reads, then the MIS-25 grading routes (class writes are scoped to the class teacher)
     private const TEACHER_ROUTES = [
@@ -48,7 +48,7 @@ class TeacherAccessTest extends TestCase
     private const PLACEHOLDERS = ['{id}', '{quarter}', '{activityId}'];
 
     // every api/mis route except the session ones and the teacher reads; a new route that teacher can reach fails the 403 loop first
-    private const CHECKED_ROUTE_COUNT = 135;
+    private const CHECKED_ROUTE_COUNT = 145;
 
     protected function setUp(): void
     {
