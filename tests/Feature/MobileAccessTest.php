@@ -20,7 +20,7 @@ class MobileAccessTest extends TestCase
     private const MOBILE_PREFIX = 'api/mis/mobile/';
 
     // every api/mis route except the two public logins and the four mobile routes
-    private const CHECKED_ROUTE_COUNT = 160;
+    private const CHECKED_ROUTE_COUNT = 164;
 
     private const MOBILE_ROUTES = [
         'GET api/mis/mobile/me',

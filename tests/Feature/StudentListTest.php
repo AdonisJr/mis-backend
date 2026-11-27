@@ -384,6 +384,28 @@ class StudentListTest extends TestCase
         $this->fetchStudentList(['grade_level' => 'Grade 10', 'section' => 'Rizal'])->assertOk();
     }
 
+    public function test_filter_by_card_presence(): void
+    {
+        $carded = Student::factory()->withRfid()->create(self::ANDREA);
+        $uncarded = Student::factory()->create(self::MIGUEL);
+
+        $this->assertSame([$carded->id], $this->fetchStudentIds(['has_rfid' => 1]));
+        $this->assertSame([$uncarded->id], $this->fetchStudentIds(['has_rfid' => 0]));
+        $this->assertEqualsCanonicalizing([$carded->id, $uncarded->id], $this->fetchStudentIds());
+        $this->fetchStudentList(['has_rfid' => 1])->assertJsonPath('meta.total', 1);
+        $this->fetchStudentList(['has_rfid' => 0])->assertJsonPath('meta.total', 1);
+        $this->fetchStudentList()->assertJsonPath('meta.total', 2);
+    }
+
+    public function test_list_rejects_invalid_has_rfid(): void
+    {
+        foreach (['true', 'yes', '2'] as $invalidValue) {
+            $this->fetchStudentList(['has_rfid' => $invalidValue])
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors(['has_rfid']);
+        }
+    }
+
     /**
      * @return array{0: Section, 1: Section}
      */

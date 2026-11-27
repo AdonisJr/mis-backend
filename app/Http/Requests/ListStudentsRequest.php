@@ -28,6 +28,7 @@ class ListStudentsRequest extends FormRequest
         return [
             'search' => self::SEARCH_RULES,
             'grade_level_id' => StoreSectionRequest::buildIdRules('nullable', GradeLevel::class),
+            'has_rfid' => ['nullable', 'boolean'],
         ];
     }
 }

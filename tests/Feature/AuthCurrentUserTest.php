@@ -139,10 +139,9 @@ class AuthCurrentUserTest extends TestCase
         $this->assertSame(1, Role::where('name', Role::ADMIN)->count());
     }
 
-    public function test_device_routes_are_not_added(): void
+    public function test_attendance_scan_route_is_not_added(): void
     {
         $this->postJson('/api/scan', ['rfid' => 'AB:CD:EF:01'])->assertNotFound();
-        $this->post('/api/rfid/scan', ['rfid' => 'AB:CD:EF:01'])->assertNotFound();
     }
 
     public function test_legacy_api_user_stub_is_removed(): void

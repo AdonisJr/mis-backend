@@ -70,7 +70,7 @@ class AccountantAccessTest extends TestCase
     ];
 
     // every api/mis route except the session ones and the accountant routes; a new route the accountant can reach fails the 403 loop first
-    private const CHECKED_ROUTE_COUNT = 125;
+    private const CHECKED_ROUTE_COUNT = 129;
 
     /** @var array<string, mixed> */
     private array $assessment;
