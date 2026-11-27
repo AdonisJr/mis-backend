@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\LoginUserRequest;
 use App\Http\Resources\UserResource;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,7 +23,7 @@ class AuthController extends Controller
         $user = User::where('email', $request->validated('email'))->first();
 
         // same error for unknown email and wrong password so the response does not reveal which accounts exist
-        if (! $user || ! Hash::check($request->validated('password'), $user->password)) {
+        if (! $user || ! Hash::check($request->validated('password'), $user->password) || $user->hasAnyRole(Role::MOBILE_ROLES)) {
             throw ValidationException::withMessages(['email' => __('auth.failed')]);
         }
 

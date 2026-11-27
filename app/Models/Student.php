@@ -5,6 +5,7 @@ namespace App\Models;
 use Database\Factories\StudentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Student extends Model
@@ -13,6 +14,14 @@ class Student extends Model
     use HasFactory;
 
     public const GENDERS = ['male', 'female'];
+
+    public const ACCOUNT_STATUS_NONE = 'none';
+
+    public const ACCOUNT_STATUS_ACTIVE = 'active';
+
+    public const ACCOUNT_STATUS_INACTIVE = 'inactive';
+
+    public const ACCOUNT_STATUS_MUST_CHANGE_PASSWORD = 'must_change_password';
 
     /**
      * The attributes that are mass assignable.
@@ -43,6 +52,32 @@ class Student extends Model
         return [
             'birth_date' => 'date',
         ];
+    }
+
+    /** @return BelongsTo<User, $this> */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function buildFullName(): string
+    {
+        return implode(' ', array_filter([$this->first_name, $this->middle_name, $this->last_name], fn (?string $namePart) => $namePart !== null));
+    }
+
+    public function resolveAccountStatus(): string
+    {
+        if (! $this->user) {
+            return self::ACCOUNT_STATUS_NONE;
+        }
+        if (! $this->user->is_active) {
+            return self::ACCOUNT_STATUS_INACTIVE;
+        }
+        if ($this->user->must_change_password) {
+            return self::ACCOUNT_STATUS_MUST_CHANGE_PASSWORD;
+        }
+
+        return self::ACCOUNT_STATUS_ACTIVE;
     }
 
     /** @return HasMany<Enrollment, $this> */

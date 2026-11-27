@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsurePasswordChanged;
 use App\Http\Middleware\ForceJsonResponse;
 use App\Http\Middleware\RoleMiddleware;
 use Illuminate\Foundation\Application;
@@ -15,7 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->api(prepend: [ForceJsonResponse::class]);
-        $middleware->alias(['role' => RoleMiddleware::class]);
+        $middleware->alias(['role' => RoleMiddleware::class, 'password.changed' => EnsurePasswordChanged::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

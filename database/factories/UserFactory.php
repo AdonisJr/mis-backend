@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Role;
+use App\Models\Student;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -80,6 +81,19 @@ class UserFactory extends Factory
         return $this->afterCreating(function (User $user) {
             $user->roles()->attach(Role::firstOrCreate(['name' => Role::ACCOUNTANT]));
         });
+    }
+
+    public function studentAccount(?Student $student = null): static
+    {
+        return $this->state(fn (array $attributes) => ['email' => null])->afterCreating(function (User $user) use ($student) {
+            $user->roles()->attach(Role::firstOrCreate(['name' => Role::STUDENT]));
+            ($student ?? Student::factory()->create())->forceFill(['user_id' => $user->id])->save();
+        });
+    }
+
+    public function mustChangePassword(): static
+    {
+        return $this->state(fn (array $attributes) => ['must_change_password' => true]);
     }
 
     public function inactive(): static

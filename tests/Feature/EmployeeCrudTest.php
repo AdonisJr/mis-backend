@@ -625,6 +625,20 @@ class EmployeeCrudTest extends TestCase
         return [...Arr::only(self::VALID_PAYLOAD, self::PROFILE_KEYS), ...$overrides];
     }
 
+    public function test_employee_endpoints_return_404_for_a_student_account(): void
+    {
+        $adminToken = $this->createActingAdminToken();
+        $studentUser = User::factory()->studentAccount()->create();
+        $studentUrl = self::EMPLOYEES_URL.'/'.$studentUser->id;
+
+        $this->withToken($adminToken)->putJson($studentUrl, $this->buildUpdatePayload(['roles' => [Role::REGISTRAR]]))->assertNotFound();
+        $this->withToken($adminToken)->putJson($studentUrl.'/password', ['password' => self::NEW_PASSWORD, 'password_confirmation' => self::NEW_PASSWORD])->assertNotFound();
+        $this->withToken($adminToken)->putJson($studentUrl.'/deactivate')->assertNotFound();
+        $this->withToken($adminToken)->putJson($studentUrl.'/reactivate')->assertNotFound();
+
+        $this->assertSame([Role::STUDENT], $studentUser->roles()->pluck('name')->all());
+    }
+
     private function createActingAdminToken(): string
     {
         return $this->createTokenFor($this->createActingAdmin());

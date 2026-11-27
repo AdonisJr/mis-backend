@@ -329,6 +329,16 @@ class EmployeeListTest extends TestCase
     /**
      * @param  array<string, mixed>  $queryParams
      */
+    public function test_list_excludes_student_accounts(): void
+    {
+        $adminToken = $this->createTokenFor($this->createActingAdmin());
+        $studentUser = User::factory()->studentAccount()->create();
+
+        $listedIds = collect($this->fetchEmployeeList($adminToken)->assertOk()->assertJsonPath('meta.total', 1)->json('employees'))->pluck('id')->all();
+
+        $this->assertNotContains($studentUser->id, $listedIds);
+    }
+
     private function fetchEmployeeList(string $token, array $queryParams = []): TestResponse
     {
         return $this->withToken($token)->getJson(self::EMPLOYEES_URL.'?'.http_build_query($queryParams));

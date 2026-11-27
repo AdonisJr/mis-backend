@@ -38,7 +38,7 @@ class EmployeeController extends Controller
 
     public function listEmployees(ListEmployeesRequest $request): JsonResponse
     {
-        $employeeQuery = User::query()->with('roles')->orderByDesc('created_at')->orderByDesc('id');
+        $employeeQuery = User::employees()->with('roles')->orderByDesc('created_at')->orderByDesc('id');
         $this->applySearch($employeeQuery, (string) $request->validated('search'));
         $employeeQuery->when($request->filled('role'), fn (Builder $query) => $query->whereHas('roles', fn (Builder $roleQuery) => $roleQuery->where('name', $request->validated('role'))));
         $employeeQuery->when($request->filled('status'), fn (Builder $query) => $query->where('is_active', $request->validated('status') === ListEmployeesRequest::STATUS_ACTIVE));
@@ -75,7 +75,7 @@ class EmployeeController extends Controller
 
     public function setEmployeePassword(SetEmployeePasswordRequest $request, int $id): JsonResponse
     {
-        $employee = User::findOrFail($id);
+        $employee = User::employees()->findOrFail($id);
 
         DB::transaction(function () use ($employee, $request) {
             $employee->update(['password' => $request->validated('password')]);
@@ -98,7 +98,7 @@ class EmployeeController extends Controller
 
     public function reactivateEmployee(int $id): JsonResponse
     {
-        $employee = User::findOrFail($id);
+        $employee = User::employees()->findOrFail($id);
         $employee->forceFill(['is_active' => true])->save();
 
         return response()->json([
@@ -113,7 +113,7 @@ class EmployeeController extends Controller
 
     private function updateWithinLock(UpdateEmployeeRequest $request, int $id): User
     {
-        $employee = User::lockForUpdate()->findOrFail($id);
+        $employee = User::employees()->lockForUpdate()->findOrFail($id);
         $this->ensureAdminRoleKept($request, $employee);
         $employee->update($request->safe()->only(self::PROFILE_FIELDS));
         $employee->roles()->sync($this->resolveRoleIds($request->validated('roles')));
@@ -123,7 +123,7 @@ class EmployeeController extends Controller
 
     private function deactivateWithinLock(User $actingAdmin, int $id): User
     {
-        $employee = User::lockForUpdate()->findOrFail($id);
+        $employee = User::employees()->lockForUpdate()->findOrFail($id);
         $this->ensureDeactivationAllowed($actingAdmin, $employee);
         $employee->forceFill(['is_active' => false])->save();
         $employee->tokens()->delete();
