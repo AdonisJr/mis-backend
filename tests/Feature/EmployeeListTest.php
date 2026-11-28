@@ -339,6 +339,16 @@ class EmployeeListTest extends TestCase
         $this->assertNotContains($studentUser->id, $listedIds);
     }
 
+    public function test_list_excludes_parent_accounts(): void
+    {
+        $adminToken = $this->createTokenFor($this->createActingAdmin());
+        $parentUser = User::factory()->parentAccount()->create();
+
+        $listedIds = collect($this->fetchEmployeeList($adminToken)->assertOk()->assertJsonPath('meta.total', 1)->json('employees'))->pluck('id')->all();
+
+        $this->assertNotContains($parentUser->id, $listedIds);
+    }
+
     private function fetchEmployeeList(string $token, array $queryParams = []): TestResponse
     {
         return $this->withToken($token)->getJson(self::EMPLOYEES_URL.'?'.http_build_query($queryParams));

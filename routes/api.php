@@ -25,6 +25,7 @@ use App\Http\Controllers\JournalEntryController;
 use App\Http\Controllers\MobileAttendanceController;
 use App\Http\Controllers\MobileAuthController;
 use App\Http\Controllers\MobileGradeController;
+use App\Http\Controllers\ParentAccountController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PaymentHoldController;
 use App\Http\Controllers\PaymentPlanController;
@@ -43,6 +44,7 @@ use App\Http\Controllers\SectionRolloverController;
 use App\Http\Controllers\StudentAccountController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\StudentDiscountController;
+use App\Http\Controllers\StudentParentController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\TeacherController;
 use App\Http\Controllers\TermController;
@@ -69,6 +71,7 @@ Route::prefix('mis')->group(function () {
             Route::middleware('password.changed')->group(function () {
                 Route::get('/grades', [MobileGradeController::class, 'showGrades']);
                 Route::get('/attendance', [MobileAttendanceController::class, 'showAttendance']);
+                Route::get('/children', [MobileAuthController::class, 'listChildren'])->middleware('role:'.Role::PARENT);
             });
         });
     });
@@ -158,6 +161,14 @@ Route::prefix('mis')->group(function () {
         Route::delete('/students/rfid/{id}', [StudentController::class, 'deleteStudentRfid'])->whereNumber('id');
         Route::get('/attendance/today', [AttendanceController::class, 'listTodayAttendance']);
         Route::get('/attendance', [AttendanceController::class, 'listAttendanceRecords']);
+        Route::get('/parents', [ParentAccountController::class, 'listParents']);
+        Route::post('/parents', [ParentAccountController::class, 'createParent']);
+        Route::put('/parents/{id}/password', [ParentAccountController::class, 'resetPassword'])->whereNumber('id');
+        Route::put('/parents/{id}/deactivate', [ParentAccountController::class, 'deactivateParent'])->whereNumber('id');
+        Route::put('/parents/{id}/reactivate', [ParentAccountController::class, 'reactivateParent'])->whereNumber('id');
+        Route::get('/students/{id}/parents', [StudentParentController::class, 'listParents'])->whereNumber('id');
+        Route::post('/students/{id}/parents', [StudentParentController::class, 'linkParent'])->whereNumber('id');
+        Route::delete('/students/{id}/parents/{parentId}', [StudentParentController::class, 'unlinkParent'])->whereNumber(['id', 'parentId']);
     });
 
     Route::middleware(['auth:sanctum', 'role:'.implode(',', Role::BILLING_READ_ROLES)])->group(function () {

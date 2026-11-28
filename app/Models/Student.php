@@ -6,6 +6,7 @@ use Database\Factories\StudentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Student extends Model
@@ -14,6 +15,10 @@ class Student extends Model
     use HasFactory;
 
     public const GENDERS = ['male', 'female'];
+
+    public const PARENT_RELATIONSHIPS = ['Mother', 'Father', 'Guardian', 'Other'];
+
+    public const PARENT_LINK_TABLE = 'parent_student';
 
     public const ACCOUNT_STATUS_NONE = 'none';
 
@@ -70,14 +75,18 @@ class Student extends Model
         if (! $this->user) {
             return self::ACCOUNT_STATUS_NONE;
         }
-        if (! $this->user->is_active) {
-            return self::ACCOUNT_STATUS_INACTIVE;
-        }
-        if ($this->user->must_change_password) {
-            return self::ACCOUNT_STATUS_MUST_CHANGE_PASSWORD;
-        }
 
-        return self::ACCOUNT_STATUS_ACTIVE;
+        return $this->user->resolveAccountStatus();
+    }
+
+    /** @return BelongsToMany<User, $this> */
+    public function parents(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, self::PARENT_LINK_TABLE, 'student_id', 'parent_user_id')
+            ->withPivot('relationship')
+            ->withTimestamps()
+            ->orderBy('users.name')
+            ->orderBy('users.id');
     }
 
     /** @return HasMany<Enrollment, $this> */

@@ -2,21 +2,13 @@
 
 namespace App\Http\Requests;
 
-use App\Models\Student;
+use App\Http\Requests\Concerns\ResolvesMobileStudent;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ShowMobileAttendanceRequest extends FormRequest
 {
-    private ?Student $student = null;
-
-    /**
-     * Determine if the user is authorized to make this request.
-     */
-    public function authorize(): bool
-    {
-        return true;
-    }
+    use ResolvesMobileStudent;
 
     protected function prepareForValidation(): void
     {
@@ -33,11 +25,5 @@ class ShowMobileAttendanceRequest extends FormRequest
         return [
             'month' => ['required', 'date_format:Y-m'],
         ];
-    }
-
-    // 404 when the student row was removed and user_id was nulled
-    public function findStudent(): Student
-    {
-        return $this->student ??= $this->user()->student()->firstOrFail();
     }
 }

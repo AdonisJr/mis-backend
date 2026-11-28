@@ -7,6 +7,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class MobileStudentResource extends JsonResource
 {
+    public const RELATIONS = ['currentEnrollments.section.gradeLevel', 'currentEnrollments.section.schoolYear'];
+
     /**
      * Transform the resource into an array.
      *

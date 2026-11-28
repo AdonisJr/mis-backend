@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ResolvesMobileStudent;
 use App\Models\SchoolYear;
-use App\Models\Student;
 use App\Support\ReportCardBuilder;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -11,15 +11,7 @@ use Illuminate\Validation\Validator;
 
 class ShowMobileGradesRequest extends FormRequest
 {
-    private ?Student $student = null;
-
-    /**
-     * Determine if the user is authorized to make this request.
-     */
-    public function authorize(): bool
-    {
-        return true;
-    }
+    use ResolvesMobileStudent;
 
     /**
      * Get the validation rules that apply to the request.
@@ -41,12 +33,6 @@ class ShowMobileGradesRequest extends FormRequest
         return [
             fn (Validator $validator) => $this->rejectUnavailableYear($validator),
         ];
-    }
-
-    // 404 when the student row was removed and user_id was nulled
-    public function findStudent(): Student
-    {
-        return $this->student ??= $this->user()->student()->firstOrFail();
     }
 
     private function rejectUnavailableYear(Validator $validator): void

@@ -45,10 +45,10 @@ class TeacherAccessTest extends TestCase
         'GET api/mis/sections/{id}/report-cards',
     ];
 
-    private const PLACEHOLDERS = ['{id}', '{quarter}', '{activityId}'];
+    private const PLACEHOLDERS = ['{id}', '{quarter}', '{activityId}', '{parentId}'];
 
     // every api/mis route except the session ones and the teacher reads; a new route that teacher can reach fails the 403 loop first
-    private const CHECKED_ROUTE_COUNT = 152;
+    private const CHECKED_ROUTE_COUNT = 161;
 
     protected function setUp(): void
     {

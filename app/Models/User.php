@@ -26,6 +26,7 @@ class User extends Authenticatable
         'name',
         'email',
         'contact',
+        'mobile_number',
         'password',
     ];
 
@@ -84,13 +85,42 @@ class User extends Authenticatable
     /** @param Builder<User> $query */
     public function scopeEmployees(Builder $query): void
     {
-        $query->whereDoesntHave('roles', fn (Builder $roleQuery) => $roleQuery->where('name', Role::STUDENT));
+        $query->whereDoesntHave('roles', fn (Builder $roleQuery) => $roleQuery->whereIn('name', Role::MOBILE_ROLES));
+    }
+
+    /** @param Builder<User> $query */
+    public function scopeParentAccounts(Builder $query): void
+    {
+        $query->whereHas('roles', fn (Builder $roleQuery) => $roleQuery->where('name', Role::PARENT));
+    }
+
+    public function resolveAccountStatus(): string
+    {
+        if (! $this->is_active) {
+            return Student::ACCOUNT_STATUS_INACTIVE;
+        }
+        if ($this->must_change_password) {
+            return Student::ACCOUNT_STATUS_MUST_CHANGE_PASSWORD;
+        }
+
+        return Student::ACCOUNT_STATUS_ACTIVE;
     }
 
     /** @return HasOne<Student, $this> */
     public function student(): HasOne
     {
         return $this->hasOne(Student::class);
+    }
+
+    /** @return BelongsToMany<Student, $this> */
+    public function children(): BelongsToMany
+    {
+        return $this->belongsToMany(Student::class, Student::PARENT_LINK_TABLE, 'parent_user_id', 'student_id')
+            ->withPivot('relationship')
+            ->withTimestamps()
+            ->orderBy('students.last_name')
+            ->orderBy('students.first_name')
+            ->orderBy('students.id');
     }
 
     /** @return HasMany<SchoolClass, $this> */
