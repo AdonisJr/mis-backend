@@ -19,17 +19,18 @@ class MobileAccessTest extends TestCase
 
     private const MOBILE_PREFIX = 'api/mis/mobile/';
 
-    // every api/mis route except the two public logins and the four mobile routes
-    private const CHECKED_ROUTE_COUNT = 164;
+    // every api/mis route except the two public logins and the five mobile routes
+    private const CHECKED_ROUTE_COUNT = 166;
 
     private const MOBILE_ROUTES = [
         'GET api/mis/mobile/me',
         'PUT api/mis/mobile/password',
         'POST api/mis/mobile/logout',
         'GET api/mis/mobile/grades',
+        'GET api/mis/mobile/attendance',
     ];
 
-    private const GATED_ROUTE = 'GET api/mis/mobile/grades';
+    private const GATED_ROUTES = ['GET api/mis/mobile/grades', 'GET api/mis/mobile/attendance'];
 
     protected function setUp(): void
     {
@@ -80,7 +81,7 @@ class MobileAccessTest extends TestCase
             }
         }
 
-        $this->assertCount(4, $mobileRoutes);
+        $this->assertCount(5, $mobileRoutes);
     }
 
     public function test_role_less_user_gets_403_on_the_mobile_group_routes(): void
@@ -92,7 +93,7 @@ class MobileAccessTest extends TestCase
         }
     }
 
-    public function test_only_the_four_mobile_routes_carry_the_student_role_and_only_grades_the_gate(): void
+    public function test_only_the_five_mobile_routes_carry_the_student_role_and_only_grades_and_attendance_the_gate(): void
     {
         $studentRoutes = collect(Route::getRoutes()->getRoutes())
             ->filter(fn (RoutingRoute $route) => collect($route->gatherMiddleware())->contains('role:'.Role::STUDENT));
@@ -101,7 +102,7 @@ class MobileAccessTest extends TestCase
 
         foreach ($studentRoutes as $route) {
             $isGated = in_array('password.changed', $route->gatherMiddleware(), true);
-            $this->assertSame($route->methods()[0].' '.$route->uri() === self::GATED_ROUTE, $isGated);
+            $this->assertSame(in_array($route->methods()[0].' '.$route->uri(), self::GATED_ROUTES, true), $isGated);
         }
     }
 }

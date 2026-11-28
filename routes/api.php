@@ -3,6 +3,7 @@
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AssessmentCandidateController;
 use App\Http\Controllers\AssessmentController;
+use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClassListController;
 use App\Http\Controllers\ClassQuarterController;
@@ -21,6 +22,7 @@ use App\Http\Controllers\GradeLevelController;
 use App\Http\Controllers\GradingActivityController;
 use App\Http\Controllers\GradingScoreController;
 use App\Http\Controllers\JournalEntryController;
+use App\Http\Controllers\MobileAttendanceController;
 use App\Http\Controllers\MobileAuthController;
 use App\Http\Controllers\MobileGradeController;
 use App\Http\Controllers\PaymentController;
@@ -50,6 +52,8 @@ use App\Models\Role;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/rfid/scan', [RfidController::class, 'requestRfid'])->middleware('throttle:60,1');
+// the `scan` prefix gives the route its own counter, otherwise it would share the relay's per-IP one
+Route::post('/scan', [AttendanceController::class, 'recordScan'])->middleware('throttle:60,1,scan');
 
 Route::prefix('mis')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
@@ -64,6 +68,7 @@ Route::prefix('mis')->group(function () {
 
             Route::middleware('password.changed')->group(function () {
                 Route::get('/grades', [MobileGradeController::class, 'showGrades']);
+                Route::get('/attendance', [MobileAttendanceController::class, 'showAttendance']);
             });
         });
     });
@@ -151,6 +156,8 @@ Route::prefix('mis')->group(function () {
         Route::post('/rfid/close', [RfidController::class, 'closeRfidChannel']);
         Route::put('/students/rfid/{id}', [StudentController::class, 'updateStudentRfid'])->whereNumber('id');
         Route::delete('/students/rfid/{id}', [StudentController::class, 'deleteStudentRfid'])->whereNumber('id');
+        Route::get('/attendance/today', [AttendanceController::class, 'listTodayAttendance']);
+        Route::get('/attendance', [AttendanceController::class, 'listAttendanceRecords']);
     });
 
     Route::middleware(['auth:sanctum', 'role:'.implode(',', Role::BILLING_READ_ROLES)])->group(function () {
