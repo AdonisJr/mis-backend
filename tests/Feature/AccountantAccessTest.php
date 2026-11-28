@@ -70,7 +70,7 @@ class AccountantAccessTest extends TestCase
     ];
 
     // every api/mis route except the session ones and the accountant routes; a new route the accountant can reach fails the 403 loop first
-    private const CHECKED_ROUTE_COUNT = 132;
+    private const CHECKED_ROUTE_COUNT = 141;
 
     /** @var array<string, mixed> */
     private array $assessment;
@@ -182,7 +182,7 @@ class AccountantAccessTest extends TestCase
             ->reject(fn ($route) => in_array($route->methods()[0].' '.$route->uri(), self::ACCOUNTANT_ROUTES, true));
 
         foreach ($checkedRoutes as $route) {
-            $this->sendAs($accountantToken, $route->methods()[0], '/'.str_replace(['{id}', '{quarter}', '{activityId}'], '1', $route->uri()))
+            $this->sendAs($accountantToken, $route->methods()[0], '/'.str_replace(['{id}', '{quarter}', '{activityId}', '{parentId}'], '1', $route->uri()))
                 ->assertForbidden()
                 ->assertExactJson(self::FORBIDDEN_BODY);
         }

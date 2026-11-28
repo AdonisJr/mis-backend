@@ -17,6 +17,9 @@ class UserFactory extends Factory
     // 08-prefixed so a factory contact never equals a fixed 09-prefixed test contact
     private const CONTACT_PATTERN = '08#########';
 
+    // 0999-prefixed so a factory number never equals a fixed 0917-prefixed test number
+    private const PARENT_MOBILE_PATTERN = '0999#######';
+
     /**
      * The current password being used by the factory.
      */
@@ -88,6 +91,16 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => ['email' => null])->afterCreating(function (User $user) use ($student) {
             $user->roles()->attach(Role::firstOrCreate(['name' => Role::STUDENT]));
             ($student ?? Student::factory()->create())->forceFill(['user_id' => $user->id])->save();
+        });
+    }
+
+    public function parentAccount(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'email' => null,
+            'mobile_number' => fake()->unique()->numerify(self::PARENT_MOBILE_PATTERN),
+        ])->afterCreating(function (User $user) {
+            $user->roles()->attach(Role::firstOrCreate(['name' => Role::PARENT]));
         });
     }
 
